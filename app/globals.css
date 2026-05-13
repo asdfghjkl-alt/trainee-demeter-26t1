@@ -24,8 +24,8 @@ body {
   color: var(--foreground);
   font-family: "Satoshi", ui-sans-serif, system-ui, sans-serif;
   transition:
-    background-color 150ms ease-in-out,
-    color 150ms ease-in-out;
+    background-color 300ms ease-in-out,
+    color 300ms ease-in-out;
 }
 
 @layer base {
