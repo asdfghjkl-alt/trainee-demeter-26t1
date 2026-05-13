@@ -9,12 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "next": "16.2.3",
+    "bcrypt": "^6.0.0",
+    "joi": "^18.2.1",
+    "jose": "^6.2.3",
+    "mongoose": "^9.6.2",
+    "next": "^16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -22,5 +27,8 @@
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "^8.5.14"
   }
 }
