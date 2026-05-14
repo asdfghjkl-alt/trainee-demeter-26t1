@@ -1,6 +1,9 @@
+"use client"
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
       {/* Hero Section */}
@@ -30,7 +33,10 @@ export default function Home() {
                   placeholder="Enter join code" 
                   className="w-full bg-transparent px-4 text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
                 />
-                <button className="flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white transition-colors hover:bg-gray-200 dark:hover:bg-gray-700">
+                <button
+                  onClick={() => router.push("/join/100")}
+                  className="flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
                   Join
                 </button>
               </div>
