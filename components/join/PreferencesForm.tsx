@@ -5,6 +5,7 @@ import { useState } from "react";
 
 type EventPreferencesFormData = {
   name: string;
+  useCurrentLocation: boolean;
   location: string;
   dietaryRequirements: string[];
   dietaryNotes: string;
@@ -17,9 +18,10 @@ export default function PreferencesForm({
 }: {
   user?: { name?: string };
 }) {
-  const { register, handleSubmit } = useForm<EventPreferencesFormData>({
+  const { register, handleSubmit, watch, formState: { errors }} = useForm<EventPreferencesFormData>({
     defaultValues: {
       name: user?.name || "",
+      useCurrentLocation: false,
       location: "",
       dietaryRequirements: [],
       dietaryNotes: "",
@@ -29,6 +31,7 @@ export default function PreferencesForm({
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const useCurrentLocation = watch("useCurrentLocation");
 
   async function onSubmit(data: EventPreferencesFormData) {
     setIsSubmitting(true);
@@ -47,11 +50,11 @@ export default function PreferencesForm({
 
         {/* Heading */}
         <h2 className="mb-2 text-center text-2xl font-semibold text-gray-900 dark:text-gray-100">
-          Event Preferences
+          Plans for today?
         </h2>
 
         <p className="mb-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          Tell us about your preferences so we can plan the best experience.
+          Customise your recommendations
         </p>
 
         {/* Form */}
@@ -69,24 +72,56 @@ export default function PreferencesForm({
             <input
               type="text"
               placeholder="Your full name"
-              {...register("name")}
+              {...register("name", { required: "Name is required",})}
               className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition duration-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-gray-700 dark:bg-[#181818] dark:text-white"
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.name.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="useCurrentLocation"
+              {...register("useCurrentLocation")}
+              className="h-4 w-4 accent-cyan-600"
+            />
+
+            <label
+              htmlFor="useCurrentLocation"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Use current location
+            </label>
           </div>
 
           {/* Location */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Location (Suburb)
-            </label>
+          {!useCurrentLocation && (
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Location (Suburb)
+              </label>
 
-            <input
-              type="text"
-              placeholder="e.g. Newcastle"
-              {...register("location")}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition duration-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-gray-700 dark:bg-[#181818] dark:text-white"
-            />
-          </div>
+              <input
+                type="text"
+                placeholder="e.g. Newcastle"
+                {...register("location", {
+                  required: !useCurrentLocation
+                    ? "Location is required"
+                    : false,
+                })}
+                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition duration-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-gray-700 dark:bg-[#181818] dark:text-white"
+              />
+              {errors.location && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.location.message}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Dietary Requirements */}
           <div>

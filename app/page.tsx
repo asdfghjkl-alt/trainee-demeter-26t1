@@ -1,9 +1,12 @@
 "use client"
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function Home() {
   const router = useRouter();
+  const [joinCode, setJoinCode] = useState("");
+  const [error, setError] = useState("");
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
       {/* Hero Section */}
@@ -31,15 +34,30 @@ export default function Home() {
                 <input 
                   type="text" 
                   placeholder="Enter join code" 
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
                   className="w-full bg-transparent px-4 text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
                 />
                 <button
-                  onClick={() => router.push("/join/100")}
+                  onClick={() => {
+                    if (!joinCode.trim()) return;
+                    if (isNaN(Number(joinCode.trim()))) {
+                      setError("Enter a number")
+                      return;
+                    }
+                    
+                    router.push(`/join/${joinCode}`)
+                  }}
                   className="flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   Join
                 </button>
               </div>
+              {error && (
+                <p className="mt-2 text-sm text-red-500">
+                  {error}
+                </p>
+              )}
             </div>
           </div>
 
