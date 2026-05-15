@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, User, Settings, LogOut } from "lucide-react";
+import { ChevronDown, User, Settings, LogOut, Tags } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout, isLoading } = useAuth();
@@ -156,6 +156,18 @@ export default function Navbar() {
                               Settings
                             </Link>
                           </div>
+                          {user.admin && (
+                            <div className="py-1 text-left text-sm text-gray-700 dark:text-gray-300">
+                              <Link
+                                href="/categories"
+                                onClick={() => setIsDropdownOpen(false)}
+                                className="group flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-cyan-600 dark:hover:text-cyan-400"
+                              >
+                                <Tags className="mr-3 h-4 w-4" />
+                                Manage Categories
+                              </Link>
+                            </div>
+                          )}
                           <div className="py-1">
                             <button
                               onClick={() => {
