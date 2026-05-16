@@ -8,6 +8,7 @@ export interface ILocation {
 }
 
 export interface IRoom extends Document {
+  name: string; // The user-provided name for the room
   code: string; // The code used to join the room
   adminUser: mongoose.Types.ObjectId;
   participants: mongoose.Types.ObjectId[];
@@ -25,6 +26,7 @@ const locationSchema = new Schema<ILocation>({
 });
 
 const roomSchema = new Schema<IRoom>({
+  name: { type: String, required: true },
   code: { type: String, required: true },
   adminUser: { type: Schema.Types.ObjectId, ref: "User", required: true },
   participants: [{ type: Schema.Types.ObjectId, ref: "User" }],
