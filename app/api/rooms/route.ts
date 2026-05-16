@@ -41,7 +41,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     );
   }
 
-  const { categoryIds } = value;
+  const { name, categoryIds } = value;
 
   // Validate all categories exist in the database
   const existingCategories = await Category.find({ _id: { $in: categoryIds } });
@@ -79,6 +79,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   // Create the new room
   const newRoom = new Room({
+    name,
     code,
     adminUser: session.userData._id,
     participants: [session.userData._id], // Add the creator as the first participant
