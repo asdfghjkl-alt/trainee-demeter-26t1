@@ -368,55 +368,128 @@ components:
       properties:
         _id:
           type: string
+          description: "Unique identifier for the user"
           example: "60d0fe4f5311236168a109ca"
-        email:
-          type: string
-          example: "john.doe@example.com"
         fname:
           type: string
+          description: "First Name"
           example: "John"
+        lname:
+          type: string
+          description: "Last Name"
+          example: "Doe"
+        email:
+          type: string
+          description: "User's email address"
+          example: "john.doe@example.com"
         admin:
           type: boolean
+          description: "Whether the user is an admin"
           example: false
+        phone:
+          type: string
+          description: "Phone number"
+          example: "0412345678"
+        activated:
+          type: boolean
+          description: "Whether the user has activated via email"
+          example: true
+        regDate:
+          type: string
+          description: "Date of registration"
+          format: date-time
+        emailToken:
+          type: string
+          description: "Token for user activation"
+          example: "abc123xyz"
+        emailTokenExpires:
+          type: string
+          description: "Time when email token expires"
+          format: date-time
+        resetToken:
+          type: string
+          description: "Token for password reset"
+          example: "xyz789abc"
+        resetTokenExpires:
+          type: string
+          description: "Time when reset token expires"
+          format: date-time
+        passwordChangedAt:
+          type: string
+          description: "Timestamp of last password change"
+          format: date-time
     Category:
       type: object
       properties:
         _id:
           type: string
+          description: "Unique identifier for the category"
           example: "60d0fe4f5311236168a109cb"
         name:
           type: string
+          description: "Display name of the category"
           example: "Outdoor Activities"
     Room:
       type: object
       properties:
-        name:
-          type: string
-          example: "Friday Night Drinks"
         _id:
           type: string
+          description: "Unique identifier for the room"
           example: "60d0fe4f5311236168a109cd"
+        name:
+          type: string
+          description: "The user-provided name for the room"
+          example: "Friday Night Drinks"
         code:
           type: string
+          description: "The 6-character code used to join the room"
           example: "ABCDEF"
         adminUser:
           type: string
+          description: "The user ID of the room creator/admin"
           example: "60d0fe4f5311236168a109ca"
+        participants:
+          type: array
+          description: "List of user IDs who have joined the room"
+          items:
+            type: string
+          example: ["60d0fe4f5311236168a109ca"]
+        categories:
+          type: array
+          description: "List of category IDs selected for the room"
+          items:
+            type: string
+          example: ["60d0fe4f5311236168a109cb"]
+        locations:
+          type: array
+          description: "List of proposed meeting locations"
+          items:
+            $ref: "#/components/schemas/Location"
         status:
           type: string
+          description: "Current phase of the room (open, closed, or ended)"
+          enum: [open, closed, ended]
           example: "open"
+        createdAt:
+          type: string
+          description: "The time when the room was created"
+          format: date-time
     Location:
       type: object
       properties:
         longitude:
           type: number
+          description: "Geographic longitude"
           example: 151.2313
         latitude:
           type: number
+          description: "Geographic latitude"
           example: -33.9173
         name:
           type: string
+          description: "Name of the location"
           example: "UNSW Sydney"
         description:
           type: string
+          description: "Full address or detailed description of the location"
           example: "UNSW Sydney, High St, Kensington, New South Wales 2052, Australia"
