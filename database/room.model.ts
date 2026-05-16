@@ -25,7 +25,7 @@ const locationSchema = new Schema<ILocation>({
 });
 
 const roomSchema = new Schema<IRoom>({
-  code: { type: String, required: true },
+  code: { type: String, required: true, index: true },
   adminUser: { type: Schema.Types.ObjectId, ref: "User", required: true },
   participants: [{ type: Schema.Types.ObjectId, ref: "User" }],
   categories: [{ type: Schema.Types.ObjectId, ref: "Category" }],

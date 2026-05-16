@@ -1,0 +1,413 @@
+openapi: 3.0.0
+info:
+  title: Rendezvous API
+  description: API documentation for the Rendezvous room-based meetup application.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: /api
+    description: Primary API server
+
+security:
+  - cookieAuth: []
+
+paths:
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account and returns a session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fname
+                - lname
+                - phone
+                - email
+                - password
+                - confirmPassword
+              properties:
+                fname:
+                  type: string
+                  example: "John"
+                lname:
+                  type: string
+                  example: "Doe"
+                phone:
+                  type: string
+                  description: "Must be a valid Australian mobile number starting with 04 (10 digits)"
+                  example: "0412345678"
+                email:
+                  type: string
+                  format: email
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                confirmPassword:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Login
+      description: Authenticates a user and sets a session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        "200":
+          description: Logged in successfully
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Logout
+      description: Clears the authentication session cookie.
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Get current user
+      description: Returns the currently authenticated user's profile information.
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /categories:
+    get:
+      operationId: getCategories
+      tags:
+        - Iteration 1
+        - Category
+      summary: Get all categories
+      description: Retrieves a list of all available categories.
+      responses:
+        "200":
+          description: A list of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createCategory
+      tags:
+        - Iteration 1
+        - Category
+      summary: Create a category
+      description: Creates a new category (Requires Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Outdoor Activities"
+      responses:
+        "201":
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Category created successfully"
+                  category:
+                    $ref: "#/components/schemas/Category"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden (Not an admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms:
+    post:
+      operationId: createRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Create a room
+      description: Creates a new room with 1 to 3 categories.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - categoryIds
+              properties:
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 3
+                  example: ["60d0fe4f5311236168a109cb"]
+      responses:
+        "201":
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Room created successfully"
+                  room:
+                    $ref: "#/components/schemas/Room"
+        "400":
+          description: Validation error or invalid Category ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/locations:
+    post:
+      operationId: addLocation
+      tags:
+        - Iteration 1
+        - Room
+      summary: Add a location to a room
+      description: Adds a new geographic location to an existing room using Mapbox Forward Geocoding. Only the admin of the room can add a location.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: "UNSW Sydney"
+      responses:
+        "201":
+          description: Location added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Location added successfully"
+                  location:
+                    $ref: "#/components/schemas/Location"
+        "400":
+          description: Validation error or location not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden (User is not the room admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room or User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Server configuration error (e.g. missing Mapbox token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: rendezvous_auth
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "An error occurred during the request"
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "60d0fe4f5311236168a109ca"
+        email:
+          type: string
+          example: "john.doe@example.com"
+        fname:
+          type: string
+          example: "John"
+        admin:
+          type: boolean
+          example: false
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "60d0fe4f5311236168a109cb"
+        name:
+          type: string
+          example: "Outdoor Activities"
+    Room:
+      type: object
+      properties:
+        _id:
+          type: string
+          example: "60d0fe4f5311236168a109cd"
+        code:
+          type: string
+          example: "ABCDEF"
+        adminUser:
+          type: string
+          example: "60d0fe4f5311236168a109ca"
+        status:
+          type: string
+          example: "open"
+    Location:
+      type: object
+      properties:
+        longitude:
+          type: number
+          example: 151.2313
+        latitude:
+          type: number
+          example: -33.9173
+        name:
+          type: string
+          example: "UNSW Sydney"
+        description:
+          type: string
+          example: "UNSW Sydney, High St, Kensington, New South Wales 2052, Australia"
