@@ -235,8 +235,14 @@ paths:
             schema:
               type: object
               required:
+                - name
                 - categoryIds
               properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  example: "Friday Night Drinks"
                 categoryIds:
                   type: array
                   items:
@@ -384,6 +390,9 @@ components:
     Room:
       type: object
       properties:
+        name:
+          type: string
+          example: "Friday Night Drinks"
         _id:
           type: string
           example: "60d0fe4f5311236168a109cd"
