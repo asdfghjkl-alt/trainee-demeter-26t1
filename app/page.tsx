@@ -30,13 +30,15 @@ export default function Home() {
                 Create a meetup
               </button>
               
-              <div className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all">
+              <form action={joinRoom} className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all">
                 <input 
+                  name="code"
                   type="text" 
                   placeholder="Enter join code" 
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
                   className="w-full bg-transparent px-4 text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
+                  required
                 />
                 <button
                   onClick={() => {
