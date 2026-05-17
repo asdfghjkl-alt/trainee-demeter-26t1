@@ -6,7 +6,10 @@ import { getSession } from "@/lib/session";
 import { addLocationSchema } from "@/lib/schemas";
 
 export const POST = apiHandler(
-  async (req: NextRequest, { params }: { params: Promise<{ code: string }> }) => {
+  async (
+    req: NextRequest,
+    { params }: { params: Promise<{ code: string }> },
+  ) => {
     // Check auth
     const session = await getSession();
     if (!session || !session.userData) {
@@ -51,8 +54,8 @@ export const POST = apiHandler(
     }
 
     // Mapbox Geocoding
-    const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
-    if (!MAPBOX_ACCESS_TOKEN) {
+    const NEXT_PUBLIC_MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!NEXT_PUBLIC_MAPBOX_TOKEN) {
       return NextResponse.json(
         { message: "Server configuration error: missing Mapbox token" },
         { status: 500 },
@@ -61,7 +64,7 @@ export const POST = apiHandler(
 
     const searchText = encodeURIComponent(name);
     const response = await fetch(
-      `https://api.mapbox.com/search/geocode/v6/forward?q=${searchText}&country=au&access_token=${MAPBOX_ACCESS_TOKEN}`,
+      `https://api.mapbox.com/search/geocode/v6/forward?q=${searchText}&country=au&access_token=${NEXT_PUBLIC_MAPBOX_TOKEN}`,
     );
 
     const data = await response.json();
