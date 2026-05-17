@@ -31,7 +31,7 @@ MONGODB_URI='mongodb://localhost:27017/rendezvous'
 JWT_SECRET='random string'
 JWT_NAME='rendezvous_auth'
 NEXT_PUBLIC_BASE_URL='http://localhost:3000'
-MAPBOX_ACCESS_TOKEN='your_mapbox_public_token_here'
+NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
 ```
 
 _(Note: Be sure to change `JWT_SECRET` to a secure, random string in production!)_
