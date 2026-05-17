@@ -37,7 +37,7 @@ export default function Home() {
                   placeholder="Enter join code" 
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
-                  className="w-full bg-transparent px-4 text-gray-900 dark:text-white outline-none placeholder:text-gray-400"
+                  className="className= w-full bg-transparent px-4 text-gray-900 dark:text-white outline-none focus:outline-none focus:ring-0 border-0 placeholder:text-gray-400"
                   required
                 />
                 <button
