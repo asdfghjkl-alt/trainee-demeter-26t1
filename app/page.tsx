@@ -30,7 +30,7 @@ export default function Home() {
                 Create a meetup
               </button>
               
-              <form action={joinRoom} className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all">
+              <form className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all">
                 <input 
                   name="code"
                   type="text" 
@@ -41,6 +41,7 @@ export default function Home() {
                   required
                 />
                 <button
+                  type="button"
                   onClick={() => {
                     if (!joinCode.trim()) return;
                     if (isNaN(Number(joinCode.trim()))) {
@@ -54,7 +55,9 @@ export default function Home() {
                 >
                   Join
                 </button>
-              </div>
+              </form>
+            
+
               {error && (
                 <p className="mt-2 text-sm text-red-500">
                   {error}
