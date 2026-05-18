@@ -19,7 +19,7 @@ type CreateRoomFormData = {
 const IMAGES = [
   "/meetup.jpg",
   "/restaurant.avif",
-  "/sport.jpg",
+  "/sport.jpeg",
   "/library.jpeg",
   "/studyRoom.jpeg"
 ];
