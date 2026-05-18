@@ -1,30 +1,15 @@
 import Joi from "joi";
 import { TRANSPORTATION_MODES } from "@/database";
 
-export const roomSchema = Joi.object({
-  name: Joi.string().trim().min(3).max(50).required().messages({
-    "string.base": "Room name must be a string",
-    "string.empty": "Room name cannot be empty",
-    "string.min": "Room name must be at least 3 characters long",
-    "string.max": "Room name must be at most 50 characters long",
-    "any.required": "Room name is required",
+export const joinRoomSchema = Joi.object({
+  // Optional + allow empty in the schema; the handler enforces the
+  // guest-name rule with a friendlier message ("Name is required for guest users").
+  name: Joi.string().trim().min(2).max(80).allow("").optional().messages({
+    "string.base": "Name must be a string",
+    "string.min": "Name must be at least 2 characters",
+    "string.max": "Name must be at most 80 characters",
   }),
-  categoryIds: Joi.array()
-    .items(Joi.string())
-    .min(1)
-    .max(3)
-    .unique()
-    .required()
-    .messages({
-      "array.base": "categoryIds must be an array",
-      "array.min": "categoryIds must contain at least 1 category",
-      "array.max": "categoryIds must not contain more than 3 categories",
-      "array.unique": "categoryIds must not contain duplicate categories",
-      "array.includesRequiredUnknowns":
-        "categoryIds must contain only valid category IDs",
-      "string.base": "All category IDs must be strings",
-      "any.required": "categoryIds is required",
-    }),
+
   location: Joi.string().trim().min(2).max(100).required().messages({
     "string.base": "Location must be a string",
     "string.empty": "Location is required",
@@ -32,12 +17,15 @@ export const roomSchema = Joi.object({
     "string.max": "Location must be at most 100 characters",
     "any.required": "Location is required",
   }),
+
   dietaryRequirements: Joi.array()
     .items(Joi.string().trim().min(1).max(50))
     .default([]),
+
   preferences: Joi.string().trim().max(500).allow("").default("").messages({
     "string.max": "Preferences must be at most 500 characters",
   }),
+
   transportationMode: Joi.string()
     .valid(...TRANSPORTATION_MODES)
     .required()
