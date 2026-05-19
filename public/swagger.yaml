@@ -276,7 +276,145 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+
+  /rooms/{code}:
+    get:
+      operationId: getRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Get a room by code
+      description: Retrieves a room and its populated participants and categories by its 6-character join code.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+        - in: query
+          name: participantId
+          required: false
+          schema:
+            type: string
+          description: The unique subdocument ID of the participant requesting access. Required for guest users.
+          example: "6a0bcaaaac4f7ecd2232505d"
+      responses:
+        "200":
+          description: Room retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  room:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/join:
+    post:
+      operationId: joinRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Join a room as guest or registered user
+      description: Adds a new participant to the room. If guest, stores the participant ID in a persistent guest cookie.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - location
+                - transportationMode
+              properties:
+                name:
+                  type: string
+                  description: Display name of the participant
+                  example: "Jenny"
+                location:
+                  type: string
+                  description: Suburb or starting location address
+                  example: "Epping, Sydney, NSW, Australia"
+                dietaryRequirements:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of dietary requirements
+                  example: ["Vegetarian"]
+                preferences:
+                  type: string
+                  description: Optional personal preferences or notes
+                  example: "Needs wheelchair accessibility"
+                transportationMode:
+                  type: string
+                  description: Mode of transit
+                  enum: [bus, train, metro, driving, cycling, walking]
+                  example: "walking"
+      responses:
+        "201":
+          description: Successfully joined the room
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Guest participant cookie mapping room code to participantId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Joined room successfully"
+                  participant:
+                    $ref: "#/components/schemas/Participant"
+                  roomCode:
+                    type: string
+                    example: "ABCDEF"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Participant name conflict (name already taken)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /rooms/{code}/locations:
+
     post:
       operationId: addLocation
       tags:
@@ -450,10 +588,9 @@ components:
           example: "60d0fe4f5311236168a109ca"
         participants:
           type: array
-          description: "List of user IDs who have joined the room"
+          description: "List of participants who have joined the room"
           items:
-            type: string
-          example: ["60d0fe4f5311236168a109ca"]
+            $ref: "#/components/schemas/Participant"
         categories:
           type: array
           description: "List of category IDs selected for the room"
@@ -493,3 +630,50 @@ components:
           type: string
           description: "Full address or detailed description of the location"
           example: "UNSW Sydney, High St, Kensington, New South Wales 2052, Australia"
+    Participant:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique subdocument ID of the participant"
+          example: "6a0bcaaaac4f7ecd2232505d"
+        userId:
+          type: string
+          nullable: true
+          description: "User ID of the participant if registered, null if guest"
+          example: "60d0fe4f5311236168a109ca"
+        name:
+          type: string
+          description: "Display name of the participant"
+          example: "Jenny"
+        location:
+          type: string
+          description: "Starting location of the participant"
+          example: "Epping, Sydney, NSW, Australia"
+        dietaryRequirements:
+          type: array
+          items:
+            type: string
+          description: "List of dietary restrictions"
+          example: ["Gluten-Free", "Vegan"]
+        preferences:
+          type: string
+          description: "Additional personal preferences or notes"
+          example: "Prefers outdoor seating"
+        transportationMode:
+          type: string
+          description: "Chosen mode of transit"
+          enum: [bus, train, metro, driving, cycling, walking]
+          example: "train"
+        isGuest:
+          type: boolean
+          description: "Whether the participant is a guest user"
+          example: true
+        isAdmin:
+          type: boolean
+          description: "Whether the participant is the admin of the room"
+          example: false
+        joinedAt:
+          type: string
+          format: date-time
+          description: "Timestamp when the participant joined the room"
