@@ -13,6 +13,7 @@ export interface IParticipant {
   name: string;
   location: string;
   dietaryRequirements: string[];
+  dietaryNotes?: string;
   preferences: string;
   transportationMode: TransportationMode;
   isGuest: boolean;
@@ -27,7 +28,9 @@ export interface IRoom extends Document {
   participants: IParticipant[];
   categories: mongoose.Types.ObjectId[];
   locations: ILocation[];
-  status: "waiting" | "voting" | "completed";
+  status: "waiting" | "voting" | "completed" | "closed";
+  date?: Date;
+  description?: string;
   createdAt: Date; // The time when the room was created
 }
 
@@ -44,6 +47,7 @@ const participantSchema = new Schema<IParticipant>(
     name: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     dietaryRequirements: [{ type: String }],
+    dietaryNotes: { type: String, default: "" },
     preferences: { type: String, default: "" },
     transportationMode: {
       type: String,
@@ -66,9 +70,11 @@ const roomSchema = new Schema<IRoom>({
   locations: [locationSchema],
   status: {
     type: String,
-    enum: ["waiting", "voting", "completed"],
+    enum: ["waiting", "voting", "completed", "closed"],
     default: "waiting",
   },
+  date: { type: Date },
+  description: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 

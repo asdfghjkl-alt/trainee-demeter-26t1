@@ -15,19 +15,11 @@ export default function AdminControls({ room }: Props) {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
 
-  // Fetch available categories from the API
+  // Use the categories selected for the room
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const res = await api.get("/categories");
-        setAllCategories(res.data);
-      } catch {
-        setAllCategories(room.categories);
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-    fetchCategories();
+    setAllCategories(room.categories);
+    setSelectedCategories(room.categories.map((c) => c._id));
+    setLoadingCategories(false);
   }, [room.categories]);
 
   const toggleCategory = (categoryId: string) => {

@@ -128,6 +128,7 @@ export default function PreferencesForm({
         name: data.name,
         location: data.location,
         dietaryRequirements: data.dietaryRequirements,
+        dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         transportationMode: data.transportationMode,
       });
@@ -135,6 +136,7 @@ export default function PreferencesForm({
         name: data.name,
         location: data.location,
         dietaryRequirements: data.dietaryRequirements,
+        dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         transportationMode: data.transportationMode,
       });
@@ -151,29 +153,30 @@ export default function PreferencesForm({
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-2xl rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-shadow duration-300 hover:shadow-md dark:border-gray-800 dark:bg-[#111]">
-        {/* Heading */}
-        <h2 className="mb-2 text-center text-2xl font-semibold text-gray-900 dark:text-gray-100">
-          Plans for today?
-        </h2>
+    <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pb-16">
+      {/* HEADER */}
+      <h1 className="mt-10 mb-2 text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
+        Plans for today?
+      </h1>
 
-        <p className="mb-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          Customise your recommendations
-        </p>
+      <p className="text-lg text-gray-600 dark:text-gray-400 max-w-xl">
+        Customise your meetup preferences and travel details to get the most balanced recommendations.
+      </p>
 
-        {/* Form */}
+      {/* FORM (full width card) */}
+      <div className="mt-10 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-100/70 dark:bg-gray-900/40 p-6 shadow-sm backdrop-blur-sm">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Name */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white" htmlFor="name">
               Name <span className="text-red-500">*</span>
             </label>
             <input
+              id="name"
               type="text"
               placeholder="Your full name"
               {...register("name", { required: "Name is required" })}
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 outline-none transition duration-200 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-gray-700 dark:bg-[#181818] dark:text-white"
+              className="w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none bg-white dark:bg-[#0a0a0a]"
             />
             {errors.name && (
               <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
@@ -187,7 +190,7 @@ export default function PreferencesForm({
               id="useCurrentLocation"
               {...register("useCurrentLocation")}
               onChange={handleUseCurrentLocationChange}
-              className="h-4 w-4 accent-cyan-600"
+              className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 dark:border-gray-700 bg-white dark:bg-[#0a0a0a]"
               disabled={locationLoading}
             />
             <label
@@ -208,11 +211,12 @@ export default function PreferencesForm({
 
           {/* Location */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white" htmlFor="location">
               Location (Suburb)
               {!useCurrentLocation && <span className="text-red-500"> *</span>}
             </label>
             <input
+              id="location"
               type="text"
               placeholder={
                 useCurrentLocation && detectedSuburb
@@ -223,12 +227,10 @@ export default function PreferencesForm({
               }
               {...register("location")}
               readOnly={useCurrentLocation}
-              className={`w-full rounded-lg border px-4 py-3 text-gray-900 outline-none transition duration-200 focus:ring-2 bg-white dark:bg-[#181818] dark:text-white ${
+              className={`w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none ${
                 useCurrentLocation
-                  ? "cursor-not-allowed bg-gray-50 text-gray-500 dark:bg-[#222] dark:text-gray-400"
-                  : errors.location
-                    ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                    : "border-gray-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-gray-700"
+                  ? "bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  : "bg-white dark:bg-[#0a0a0a]"
               }`}
             />
             {errors.location && (
@@ -240,10 +242,10 @@ export default function PreferencesForm({
 
           {/* Dietary Requirements */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
               Dietary Requirements
             </label>
-            <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-300 p-4 dark:border-gray-700">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4">
               {[
                 "Vegetarian",
                 "Vegan",
@@ -254,15 +256,15 @@ export default function PreferencesForm({
               ].map((item) => (
                 <label
                   key={item}
-                  className="flex items-center gap-2 text-sm text-gray-700 transition-colors hover:text-cyan-600 dark:text-gray-300 dark:hover:text-cyan-400"
+                  className="flex items-center gap-2.5 text-sm text-gray-700 transition-colors hover:text-cyan-600 dark:text-gray-300 dark:hover:text-cyan-400 cursor-pointer"
                 >
                   <input
                     type="checkbox"
                     value={item}
                     {...register("dietaryRequirements")}
-                    className="h-4 w-4 accent-cyan-600"
+                    className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 dark:border-gray-700 bg-white dark:bg-[#0a0a0a]"
                   />
-                  {item}
+                  <span>{item}</span>
                 </label>
               ))}
             </div>
@@ -270,18 +272,14 @@ export default function PreferencesForm({
 
           {/* Additional Dietary Notes */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
               Additional Dietary Notes
             </label>
             <textarea
               rows={3}
               placeholder="Any allergies or additional dietary notes..."
               {...register("dietaryNotes")}
-              className={`w-full resize-none rounded-lg border px-4 py-3 text-gray-900 outline-none transition duration-200 focus:ring-2 bg-white dark:bg-[#181818] dark:text-white ${
-                errors.dietaryNotes
-                  ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                  : "border-gray-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-gray-700"
-              }`}
+              className="w-full resize-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4 text-base text-gray-900 dark:text-gray-100 outline-none transition duration-200 focus:border-cyan-500 dark:focus:border-cyan-500"
             />
             {errors.dietaryNotes && (
               <p className="mt-1 text-sm text-red-500">
@@ -292,18 +290,14 @@ export default function PreferencesForm({
 
           {/* Preferences */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
               Preferences
             </label>
             <textarea
-              rows={4}
+              rows={3}
               placeholder="Any seating, accessibility, or event preferences..."
               {...register("preferences")}
-              className={`w-full resize-none rounded-lg border px-4 py-3 text-gray-900 outline-none transition duration-200 focus:ring-2 bg-white dark:bg-[#181818] dark:text-white ${
-                errors.preferences
-                  ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                  : "border-gray-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-gray-700"
-              }`}
+              className="w-full resize-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4 text-base text-gray-900 dark:text-gray-100 outline-none transition duration-200 focus:border-cyan-500 dark:focus:border-cyan-500"
             />
             {errors.preferences && (
               <p className="mt-1 text-sm text-red-500">
@@ -314,16 +308,12 @@ export default function PreferencesForm({
 
           {/* Transportation Mode */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
               Transportation Mode <span className="text-red-500">*</span>
             </label>
             <select
               {...register("transportationMode")}
-              className={`w-full rounded-lg border px-4 py-3 text-gray-900 outline-none transition duration-200 focus:ring-2 bg-white dark:bg-[#181818] dark:text-white ${
-                errors.transportationMode
-                  ? "border-red-400 focus:border-red-400 focus:ring-red-400/20"
-                  : "border-gray-300 focus:border-cyan-500 focus:ring-cyan-500/20 dark:border-gray-700"
-              }`}
+              className="w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none bg-white dark:bg-[#0a0a0a]"
             >
               <option value="">Select transportation mode</option>
               {TRANSPORTATION_MODES.map((mode) => (
@@ -341,14 +331,16 @@ export default function PreferencesForm({
 
           {/* Server error */}
           {submitError && (
-            <p className="text-sm text-red-500 text-center">{submitError}</p>
+            <p className="text-sm font-medium text-red-500 mt-2 text-center">
+              {submitError}
+            </p>
           )}
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="mt-4 w-full rounded-lg bg-cyan-600 px-4 py-3 font-medium text-white transition-colors duration-200 hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full rounded-xl bg-cyan-600 px-4 py-3 text-base font-medium text-white shadow-sm transition hover:bg-cyan-500 disabled:opacity-70 mt-4"
           >
             {isSubmitting ? "Submitting..." : "Submit Preferences"}
           </button>

@@ -35,6 +35,9 @@ export const roomSchema = Joi.object({
   dietaryRequirements: Joi.array()
     .items(Joi.string().trim().min(1).max(50))
     .default([]),
+  dietaryNotes: Joi.string().trim().max(500).allow("").default("").messages({
+    "string.max": "Dietary notes must be at most 500 characters",
+  }),
   preferences: Joi.string().trim().max(500).allow("").default("").messages({
     "string.max": "Preferences must be at most 500 characters",
   }),
@@ -46,6 +49,12 @@ export const roomSchema = Joi.object({
       "any.required": "Please select a transportation mode",
       "string.empty": "Please select a transportation mode",
     }),
+  date: Joi.date().iso().allow(null, "").optional().messages({
+    "date.format": "Please enter a valid date",
+  }),
+  description: Joi.string().trim().max(200).allow(null, "").optional().messages({
+    "string.max": "Description must not exceed 200 characters",
+  }),
 });
 
 export const addLocationSchema = Joi.object({

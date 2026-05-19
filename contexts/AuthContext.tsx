@@ -92,6 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Posts to registration route
       const res = await api.post("/auth/register", data);
       toast.success(res.data.message || "Registration successful!");
+      if (res.data.user) {
+        setUser(res.data.user);
+      }
+      router.push("/");
     } catch (error) {
       if (error instanceof AxiosError) {
         toast.error(error.response?.data?.message || "Registration failed");

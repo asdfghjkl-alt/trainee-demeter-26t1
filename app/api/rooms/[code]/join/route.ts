@@ -89,6 +89,7 @@ export const POST = apiHandler(
       name,
       location: value.location,
       dietaryRequirements: value.dietaryRequirements,
+      dietaryNotes: value.dietaryNotes,
       preferences: value.preferences,
       transportationMode: value.transportationMode,
       isGuest,

@@ -15,6 +15,7 @@ export default function InputField<T extends FieldValues>({
   className = "",
   min,
   max,
+  readOnly = false,
 }: {
   label: string;
   name: Path<T>;
@@ -25,13 +26,14 @@ export default function InputField<T extends FieldValues>({
   className?: string;
   min?: number;
   max?: number;
+  readOnly?: boolean;
 }) {
   return (
     <div className={className}>
       <div className="text-left">
         {/* Input field label */}
         <label
-          className="mb-2 block font-medium text-gray-900 dark:text-white"
+          className="my-2 block font-medium text-gray-900 dark:text-white"
           htmlFor={name}
         >
           {label}
@@ -42,7 +44,12 @@ export default function InputField<T extends FieldValues>({
           id={name}
           type={type}
           placeholder={placeholder}
-          className="w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none"
+          readOnly={readOnly}
+          className={`w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none ${
+            readOnly
+              ? "bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              : "bg-white dark:bg-[#0a0a0a]"
+          }`}
           {...register(name, { valueAsNumber: type === "number" })}
           min={min}
           max={max}
