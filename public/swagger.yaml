@@ -250,6 +250,16 @@ paths:
                   minItems: 1
                   maxItems: 3
                   example: ["60d0fe4f5311236168a109cb"]
+                date:
+                  type: string
+                  format: date-time
+                  description: "Optional scheduled date/time for the meetup"
+                  example: "2026-06-15T19:00:00Z"
+                description:
+                  type: string
+                  maxLength: 200
+                  description: "Optional description of the meetup details"
+                  example: "Weekly social drinks with the DevSoc team."
       responses:
         "201":
           description: Room created successfully
@@ -275,7 +285,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
 
   /rooms/{code}:
     get:
@@ -414,7 +423,6 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   /rooms/{code}/locations:
-
     post:
       operationId: addLocation
       tags:
@@ -604,9 +612,20 @@ components:
             $ref: "#/components/schemas/Location"
         status:
           type: string
-          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed)"
-          enum: [waiting, voting, completed]
+          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed, closed = room permanently closed and hidden from listings)"
+          enum: [waiting, voting, completed, closed]
           example: "waiting"
+        date:
+          type: string
+          format: date-time
+          nullable: true
+          description: "Optional scheduled date/time for the meetup"
+          example: "2026-06-15T19:00:00Z"
+        description:
+          type: string
+          nullable: true
+          description: "Optional description of the meetup details"
+          example: "Weekly social drinks with the DevSoc team."
         createdAt:
           type: string
           description: "The time when the room was created"

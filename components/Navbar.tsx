@@ -3,7 +3,15 @@ import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, User, Settings, LogOut, Tags } from "lucide-react";
+import {
+  ChevronDown,
+  User,
+  Settings,
+  LogOut,
+  Tags,
+  DoorOpen,
+  PlusCircle,
+} from "lucide-react";
 
 export default function Navbar() {
   const { user, logout, isLoading } = useAuth();
@@ -86,16 +94,16 @@ export default function Navbar() {
 
               <div className="hidden md:flex items-center space-x-6">
                 <Link
-                  href="/explore"
+                  href="/rooms/create"
                   className="text-sm font-medium text-gray-700 hover:text-cyan-600 dark:text-gray-300 dark:hover:text-cyan-400 transition-colors"
                 >
-                  Explore
+                  Create Meetup
                 </Link>
                 <Link
-                  href="/saved"
+                  href="/rooms"
                   className="text-sm font-medium text-gray-700 hover:text-cyan-600 dark:text-gray-300 dark:hover:text-cyan-400 transition-colors"
                 >
-                  Saved
+                  My Rooms
                 </Link>
               </div>
             </div>
@@ -140,6 +148,14 @@ export default function Navbar() {
                         <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white dark:bg-[#111] ring-1 ring-black ring-opacity-5 dark:ring-white/[.145] divide-y divide-gray-100 dark:divide-gray-800 focus:outline-none z-50">
                           <div className="py-1 text-left text-sm text-gray-700 dark:text-gray-300">
                             <Link
+                              href="/rooms/create"
+                              onClick={() => setIsDropdownOpen(false)}
+                              className="group flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-cyan-600 dark:hover:text-cyan-400"
+                            >
+                              <PlusCircle className="mr-3 h-4 w-4" />
+                              Create Meetup
+                            </Link>
+                            <Link
                               href="/profile"
                               onClick={() => setIsDropdownOpen(false)}
                               className="group flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-cyan-600 dark:hover:text-cyan-400"
@@ -154,6 +170,14 @@ export default function Navbar() {
                             >
                               <Settings className="mr-3 h-4 w-4" />
                               Settings
+                            </Link>
+                            <Link
+                              href="/rooms"
+                              onClick={() => setIsDropdownOpen(false)}
+                              className="group flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-cyan-600 dark:hover:text-cyan-400"
+                            >
+                              <DoorOpen className="mr-3 h-4 w-4" />
+                              My Rooms
                             </Link>
                           </div>
                           {user.admin && (

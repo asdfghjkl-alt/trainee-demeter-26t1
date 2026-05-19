@@ -43,8 +43,11 @@ export const POST = apiHandler(async (req: NextRequest) => {
     categoryIds,
     location,
     dietaryRequirements,
+    dietaryNotes,
     preferences,
     transportationMode,
+    date,
+    description,
   } = value;
 
   const existingCategories = await Category.find({ _id: { $in: categoryIds } });
@@ -85,6 +88,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     name: user.fname,
     location,
     dietaryRequirements,
+    dietaryNotes,
     preferences,
     transportationMode,
     isGuest: false,
@@ -99,6 +103,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
     participants: [adminParticipant],
     categories: categoryIds,
     status: "waiting",
+    date: date ? new Date(date) : undefined,
+    description,
   });
 
   await newRoom.save();
