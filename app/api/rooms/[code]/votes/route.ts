@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
-import { Vote } from "@/database"
+import { Vote, Room } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
 import { getSession } from "@/lib/session";
 
@@ -27,6 +27,29 @@ export const POST = apiHandler(async (
     }
 
     await connectToDatabase();
+
+    // Check if the room exists
+    const room = await Room.findOne({ code: roomCode });
+    if (!room) {
+        return NextResponse.json(
+            { message: "Room not found" },
+            { status: 404 }
+        );
+    }
+
+    // Validate that all ranked location IDs exist in the room's locations
+    const roomLocationIds = new Set(
+        room.locations.map((loc: any) => loc._id.toString())
+    );
+
+    const allRankingsValid = rankings.every((rankId: string) => roomLocationIds.has(rankId));
+
+    if (!allRankingsValid) {
+        return NextResponse.json(
+            { message: "One or more ranked locations are invalid for this room" },
+            { status: 400 }
+        );
+    }
 
     // check for duplicates
     const exists = await Vote.findOne({ roomCode, participantId });
