@@ -2,6 +2,7 @@ import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import LobbyView from "@/components/room/LobbyView";
+import RoomPageClient from "@/components/room/RoomPageClient";
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -26,11 +27,11 @@ export default async function RoomPage({ params }: Props) {
 
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
-      {/* admin view */}
-      <LobbyView code={code} currentUserId={"mock_user_admin"} />
+      {/* Admin view */}
+      {/* <RoomPageClient code={code} currentUserId="mock_user_admin" /> */}
 
-      {/* uncomment for participant view */}
-      {/* <LobbyView code={code} currentUserId={"some_other_user"} /> */}
+      {/* User view - uncomment */}
+      <RoomPageClient code={code} currentUserId="some_other_user" />
     </main>
   );
 }

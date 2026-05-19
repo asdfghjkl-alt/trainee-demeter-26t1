@@ -1,68 +1,22 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { MOCK_ROOM } from "@/lib/rooms"; // swap for real API call later
 import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
-import { Users, Loader2 } from "lucide-react";
+import { Users } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
 
 interface Props {
-  code: string;
+  room: Room;
   currentUserId: string;
 }
 
-export default function LobbyView({ code, currentUserId }: Props) {
-  const [room, setRoom] = useState<Room | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchRoom = useCallback(async () => {
-    try {
-      // TODO: replace MOCK_ROOM with real call once Edward's route is ready:
-      // const data = await getRoom(code);
-      const data = MOCK_ROOM;
-      if (!data) {
-        setError("Room not found.");
-        return;
-      }
-      setRoom(data);
-    } catch {
-      setError("Failed to load room.");
-    } finally {
-      setLoading(false);
-    }
-  }, [code]);
-
-  // Initial fetch + polling
-  useEffect(() => {
-    fetchRoom();
-    const interval = setInterval(fetchRoom, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [fetchRoom]);
-
+export default function LobbyView({ room, currentUserId }: Props) {
   const isAdmin =
     room?.adminUser === currentUserId ||
     room?.participants.find((p) => p.userId === currentUserId)?.isAdmin === true;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
-      </div>
-    );
-  }
-
-  if (error || !room) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-red-500">{error ?? "Room not found."}</p>
-      </div>
-    );
-  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
