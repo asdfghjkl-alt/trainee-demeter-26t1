@@ -1,3 +1,4 @@
+import React from "react";
 import type { Participant, TransportationMode } from "@/types/room";
 import { Car, Train, PersonStanding, Bike, Crown } from "lucide-react";
 
@@ -28,23 +29,28 @@ export default function ParticipantList({ participants }: Props) {
     );
   }
 
+  console.log(participants);
+
   return (
     <ul className="space-y-2">
-      {participants.map((p) => (
+      {participants.map((p, i) => (
         <li
-          key={p._id}
+          key={p._id ?? p.userId ?? i}
           className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111] px-4 py-3 gap-3"
         >
           {/* Name + admin badge */}
           <div className="flex items-center gap-2 min-w-0">
             {p.isAdmin && (
-              <Crown className="w-4 h-4 text-amber-500 flex-shrink-0" aria-label="Admin" />
+              <Crown
+                className="w-4 h-4 text-amber-500 shrink-0"
+                aria-label="Admin"
+              />
             )}
             <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
               {p.name}
             </span>
             {p.isGuest && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">
                 (guest)
               </span>
             )}

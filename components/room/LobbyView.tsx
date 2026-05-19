@@ -2,29 +2,26 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { MOCK_ROOM } from "@/lib/rooms"; // swap for real API call later
+import { getRoom } from "@/lib/rooms";
 import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
-import { Users, Loader2 } from "lucide-react";
+import { Users } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
 
 interface Props {
-  code: string;
+  initialRoom: Room;
   currentUserId: string;
 }
 
-export default function LobbyView({ code, currentUserId }: Props) {
-  const [room, setRoom] = useState<Room | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function LobbyView({ initialRoom, currentUserId }: Props) {
+  const [room, setRoom] = useState<Room>(initialRoom);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRoom = useCallback(async () => {
     try {
-      // TODO: replace MOCK_ROOM with real call once Edward's route is ready:
-      // const data = await getRoom(code);
-      const data = MOCK_ROOM;
+      const data = await getRoom(initialRoom.code);
       if (!data) {
         setError("Room not found.");
         return;
@@ -32,34 +29,23 @@ export default function LobbyView({ code, currentUserId }: Props) {
       setRoom(data);
     } catch {
       setError("Failed to load room.");
-    } finally {
-      setLoading(false);
     }
-  }, [code]);
+  }, [initialRoom.code]);
 
-  // Initial fetch + polling
+  // Poll for updates every POLL_INTERVAL_MS
   useEffect(() => {
-    fetchRoom();
     const interval = setInterval(fetchRoom, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchRoom]);
 
   const isAdmin =
-    room?.adminUser === currentUserId ||
-    room?.participants.find((p) => p.userId === currentUserId)?.isAdmin === true;
+    room.adminUser === currentUserId ||
+    room.participants.find((p) => p.userId === currentUserId)?.isAdmin === true;
 
-  if (loading) {
+  if (error) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
-      </div>
-    );
-  }
-
-  if (error || !room) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-red-500">{error ?? "Room not found."}</p>
+        <p className="text-red-500">{error}</p>
       </div>
     );
   }

@@ -1,7 +1,9 @@
 import { getSession } from "@/lib/session";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { Metadata } from "next";
 import LobbyView from "@/components/room/LobbyView";
+import connectToDatabase from "@/lib/mongodb";
+import RoomModel from "@/database/room.model";
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -24,13 +26,23 @@ export default async function RoomPage({ params }: Props) {
     redirect(`/auth/login?redirect=/rooms/${code}`);
   }
 
+  await connectToDatabase();
+  const doc = await RoomModel.findOne({ code })
+    .populate("participants", "_id fname lname")
+    .populate("categories")
+    .lean();
+  if (!doc) {
+    notFound();
+  }
+
+  // Serialise ObjectIds / Dates to plain strings for the client component
+  const room = JSON.parse(JSON.stringify(doc));
+
+  const currentUserId = session.userData._id;
+
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
-      {/* admin view */}
-      <LobbyView code={code} currentUserId={"mock_user_admin"} />
-
-      {/* uncomment for participant view */}
-      {/* <LobbyView code={code} currentUserId={"some_other_user"} /> */}
+      <LobbyView initialRoom={room} currentUserId={currentUserId} />
     </main>
   );
 }

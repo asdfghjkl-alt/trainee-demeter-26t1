@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Copy, Check, Link2 } from "lucide-react";
 
 interface Props {
@@ -10,11 +10,12 @@ interface Props {
 export default function ShareRoomCard({ code }: Props) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [shareUrl, setShareUrl] = useState(`/rooms/${code}`);
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/rooms/${code}`
-      : `/rooms/${code}`;
+  // Runs only on the client — avoids SSR/hydration mismatch
+  useEffect(() => {
+    setShareUrl(`${window.location.origin}/rooms/${code}`);
+  }, [code]);
 
   const copyToClipboard = async (text: string, which: "code" | "link") => {
     await navigator.clipboard.writeText(text);
