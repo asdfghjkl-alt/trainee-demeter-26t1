@@ -5,6 +5,7 @@ import connectToDatabase from "@/lib/mongodb";
 import { Room, IParticipant } from "@/database";
 import { getSession } from "@/lib/session";
 import { joinRoomSchema } from "@/lib/schemas";
+import { setGuestParticipant } from "@/lib/guest";
 
 export const POST = apiHandler(
   async (
@@ -91,8 +92,7 @@ export const POST = apiHandler(
       preferences: value.preferences,
       transportationMode: value.transportationMode,
       isGuest,
-      isAdmin:
-        !isGuest && room.adminUser.toString() === session!.userData._id,
+      isAdmin: !isGuest && room.adminUser.toString() === session!.userData._id,
       joinedAt: new Date(),
     };
 
@@ -100,6 +100,12 @@ export const POST = apiHandler(
     await room.save();
 
     const saved = room.participants[room.participants.length - 1];
+
+    // Persist the guest's participantId in a cookie so the browser
+    // can identify them across requests without a session
+    if (isGuest) {
+      await setGuestParticipant(room.code, saved._id.toString());
+    }
 
     return NextResponse.json(
       {

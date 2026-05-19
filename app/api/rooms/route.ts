@@ -107,7 +107,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     {
       message: "Room created successfully",
       room: newRoom,
-      joinUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/join/${code}`,
+      joinUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/rooms/${code}/join`,
     },
     { status: 201 },
   );
