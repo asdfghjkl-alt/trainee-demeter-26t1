@@ -10,13 +10,6 @@ export const POST = apiHandler(
     let { participantId, rankings } = body;
     const roomCode = params.code;
 
-    const session = await getSession();
-
-    // if logged in, validate vote using userId
-    if (session) {
-      participantId = session.userData._id;
-    }
-
     if (!participantId || !Array.isArray(rankings)) {
       return NextResponse.json({ message: "Invalid request" }, { status: 400 });
     }
