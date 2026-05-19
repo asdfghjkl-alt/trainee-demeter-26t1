@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import LobbyView from "@/components/room/LobbyView";
 import connectToDatabase from "@/lib/mongodb";
-import RoomModel from "@/database/room.model";
+import { Room } from "@/database";
 import { getGuestParticipantId } from "@/lib/guest";
 
 interface Props {
@@ -21,7 +21,7 @@ export default async function RoomPage({ params }: Props) {
   const { code } = await params;
 
   await connectToDatabase();
-  const doc = await RoomModel.findOne({ code }).populate("categories").lean();
+  const doc = await Room.findOne({ code }).populate("categories").lean();
   if (!doc) {
     notFound();
   }
@@ -29,10 +29,10 @@ export default async function RoomPage({ params }: Props) {
   const session = await getSession();
   let currentParticipantId: string | null = null;
 
-  if (session) {
+  if (session?.userData?._id) {
     // For logged-in users, find their participantId from the room's participants
     const participant = doc.participants.find(
-      (p: any) => p.userId?.toString() === session.userData._id,
+      (p: any) => p.userId && p.userId.toString() === session.userData._id,
     );
     if (participant) {
       currentParticipantId = participant._id.toString();
@@ -43,7 +43,7 @@ export default async function RoomPage({ params }: Props) {
     if (guestParticipantId) {
       // Verify that this guest participant actually exists in this room
       const participant = doc.participants.find(
-        (p: any) => p._id.toString() === guestParticipantId,
+        (p: any) => p._id && p._id.toString() === guestParticipantId,
       );
       if (participant) {
         currentParticipantId = participant._id.toString();

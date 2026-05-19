@@ -25,13 +25,13 @@ export const GET = apiHandler(async (req: NextRequest, ctx?: Context) => {
 
   if (participantId) {
     isAuthorized = room.participants.some(
-      (p: any) => p._id.toString() === participantId
+      (p: any) => p._id && p._id.toString() === participantId
     );
   } else {
     const session = await getSession();
-    if (session?.userData) {
+    if (session?.userData?._id) {
       isAuthorized = room.participants.some(
-        (p: any) => p.userId?.toString() === session.userData._id
+        (p: any) => p.userId && p.userId.toString() === session.userData._id
       );
     }
   }
