@@ -26,7 +26,11 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button className="flex items-center justify-center rounded-full bg-cyan-600 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-cyan-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-[#0a0a0a]">
+              <button
+                type="button"
+                onClick={() => router.push("/rooms/create")}
+                className="flex items-center justify-center rounded-full bg-cyan-600 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-cyan-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-[#0a0a0a]"
+              >
                 Create a meetup
               </button>
               
@@ -44,12 +48,7 @@ export default function Home() {
                   type="button"
                   onClick={() => {
                     if (!joinCode.trim()) return;
-                    if (isNaN(Number(joinCode.trim()))) {
-                      setError("Enter a number")
-                      return;
-                    }
-                    
-                    router.push(`/join/${joinCode}`)
+                    router.push(`/rooms/${joinCode.trim().toUpperCase()}/join`)
                   }}
                   className="flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 >

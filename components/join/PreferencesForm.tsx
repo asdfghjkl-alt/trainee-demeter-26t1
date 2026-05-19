@@ -3,7 +3,10 @@
 import { useForm } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { preferencesSchema } from "@/lib/schemas/preferences";
+import api from "@/lib/axios";
+import { TRANSPORTATION_MODES } from "@/lib/constants";
 
 type EventPreferencesFormData = {
   name: string;
@@ -16,10 +19,13 @@ type EventPreferencesFormData = {
 };
 
 export default function PreferencesForm({
+  code,
   user,
 }: {
+  code: string;
   user?: { name?: string };
 }) {
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -112,14 +118,36 @@ export default function PreferencesForm({
     );
   }
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   async function onSubmit(data: EventPreferencesFormData) {
     setIsSubmitting(true);
-    console.log(data);
-
-    // Simulate API request
-    setTimeout(() => {
+    setSubmitError(null);
+    try {
+      console.log({
+        name: data.name,
+        location: data.location,
+        dietaryRequirements: data.dietaryRequirements,
+        preferences: data.preferences,
+        transportationMode: data.transportationMode,
+      });
+      await api.post(`/rooms/${code}/join`, {
+        name: data.name,
+        location: data.location,
+        dietaryRequirements: data.dietaryRequirements,
+        preferences: data.preferences,
+        transportationMode: data.transportationMode,
+      });
+      // Redirect to the room lobby on success
+      router.push(`/rooms/${code}`);
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Something went wrong. Please try again.";
+      setSubmitError(message);
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   }
 
   return (
@@ -298,10 +326,11 @@ export default function PreferencesForm({
               }`}
             >
               <option value="">Select transportation mode</option>
-              <option value="driving">Driving</option>
-              <option value="transit">Transit</option>
-              <option value="walking">Walking</option>
-              <option value="cycling">Cycling</option>
+              {TRANSPORTATION_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </option>
+              ))}
             </select>
             {errors.transportationMode && (
               <p className="mt-1 text-sm text-red-500">
@@ -309,6 +338,11 @@ export default function PreferencesForm({
               </p>
             )}
           </div>
+
+          {/* Server error */}
+          {submitError && (
+            <p className="text-sm text-red-500 text-center">{submitError}</p>
+          )}
 
           {/* Submit Button */}
           <button

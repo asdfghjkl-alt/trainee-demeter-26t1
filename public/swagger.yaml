@@ -1,0 +1,679 @@
+openapi: 3.0.0
+info:
+  title: Rendezvous API
+  description: API documentation for the Rendezvous room-based meetup application.
+  version: 1.0.0
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: /api
+    description: Primary API server
+
+security:
+  - cookieAuth: []
+
+paths:
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account and returns a session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fname
+                - lname
+                - phone
+                - email
+                - password
+                - confirmPassword
+              properties:
+                fname:
+                  type: string
+                  example: "John"
+                lname:
+                  type: string
+                  example: "Doe"
+                phone:
+                  type: string
+                  description: "Must be a valid Australian mobile number starting with 04 (10 digits)"
+                  example: "0412345678"
+                email:
+                  type: string
+                  format: email
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+                confirmPassword:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Login
+      description: Authenticates a user and sets a session cookie.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "john.doe@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        "200":
+          description: Logged in successfully
+        "401":
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Logout
+      description: Clears the authentication session cookie.
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      tags:
+        - Iteration 1
+        - Authentication
+      summary: Get current user
+      description: Returns the currently authenticated user's profile information.
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /categories:
+    get:
+      operationId: getCategories
+      tags:
+        - Iteration 1
+        - Category
+      summary: Get all categories
+      description: Retrieves a list of all available categories.
+      responses:
+        "200":
+          description: A list of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createCategory
+      tags:
+        - Iteration 1
+        - Category
+      summary: Create a category
+      description: Creates a new category (Requires Admin).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Outdoor Activities"
+      responses:
+        "201":
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Category created successfully"
+                  category:
+                    $ref: "#/components/schemas/Category"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden (Not an admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms:
+    post:
+      operationId: createRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Create a room
+      description: Creates a new room with 1 to 3 categories.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - categoryIds
+              properties:
+                name:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  example: "Friday Night Drinks"
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 3
+                  example: ["60d0fe4f5311236168a109cb"]
+      responses:
+        "201":
+          description: Room created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Room created successfully"
+                  room:
+                    $ref: "#/components/schemas/Room"
+        "400":
+          description: Validation error or invalid Category ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+
+  /rooms/{code}:
+    get:
+      operationId: getRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Get a room by code
+      description: Retrieves a room and its populated participants and categories by its 6-character join code.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+        - in: query
+          name: participantId
+          required: false
+          schema:
+            type: string
+          description: The unique subdocument ID of the participant requesting access. Required for guest users.
+          example: "6a0bcaaaac4f7ecd2232505d"
+      responses:
+        "200":
+          description: Room retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  room:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/join:
+    post:
+      operationId: joinRoom
+      tags:
+        - Iteration 1
+        - Room
+      summary: Join a room as guest or registered user
+      description: Adds a new participant to the room. If guest, stores the participant ID in a persistent guest cookie.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - location
+                - transportationMode
+              properties:
+                name:
+                  type: string
+                  description: Display name of the participant
+                  example: "Jenny"
+                location:
+                  type: string
+                  description: Suburb or starting location address
+                  example: "Epping, Sydney, NSW, Australia"
+                dietaryRequirements:
+                  type: array
+                  items:
+                    type: string
+                  description: Optional list of dietary requirements
+                  example: ["Vegetarian"]
+                preferences:
+                  type: string
+                  description: Optional personal preferences or notes
+                  example: "Needs wheelchair accessibility"
+                transportationMode:
+                  type: string
+                  description: Mode of transit
+                  enum: [bus, train, metro, driving, cycling, walking]
+                  example: "walking"
+      responses:
+        "201":
+          description: Successfully joined the room
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: Guest participant cookie mapping room code to participantId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Joined room successfully"
+                  participant:
+                    $ref: "#/components/schemas/Participant"
+                  roomCode:
+                    type: string
+                    example: "ABCDEF"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Participant name conflict (name already taken)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/locations:
+
+    post:
+      operationId: addLocation
+      tags:
+        - Iteration 1
+        - Room
+      summary: Add a location to a room
+      description: Adds a new geographic location to an existing room using Mapbox Forward Geocoding. Only the admin of the room can add a location.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                  example: "UNSW Sydney"
+      responses:
+        "201":
+          description: Location added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Location added successfully"
+                  location:
+                    $ref: "#/components/schemas/Location"
+        "400":
+          description: Validation error or location not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden (User is not the room admin)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room or User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Server configuration error (e.g. missing Mapbox token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: rendezvous_auth
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "An error occurred during the request"
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique identifier for the user"
+          example: "60d0fe4f5311236168a109ca"
+        fname:
+          type: string
+          description: "First Name"
+          example: "John"
+        lname:
+          type: string
+          description: "Last Name"
+          example: "Doe"
+        email:
+          type: string
+          description: "User's email address"
+          example: "john.doe@example.com"
+        admin:
+          type: boolean
+          description: "Whether the user is an admin"
+          example: false
+        phone:
+          type: string
+          description: "Phone number"
+          example: "0412345678"
+        activated:
+          type: boolean
+          description: "Whether the user has activated via email"
+          example: true
+        regDate:
+          type: string
+          description: "Date of registration"
+          format: date-time
+        emailToken:
+          type: string
+          description: "Token for user activation"
+          example: "abc123xyz"
+        emailTokenExpires:
+          type: string
+          description: "Time when email token expires"
+          format: date-time
+        resetToken:
+          type: string
+          description: "Token for password reset"
+          example: "xyz789abc"
+        resetTokenExpires:
+          type: string
+          description: "Time when reset token expires"
+          format: date-time
+        passwordChangedAt:
+          type: string
+          description: "Timestamp of last password change"
+          format: date-time
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique identifier for the category"
+          example: "60d0fe4f5311236168a109cb"
+        name:
+          type: string
+          description: "Display name of the category"
+          example: "Outdoor Activities"
+    Room:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique identifier for the room"
+          example: "60d0fe4f5311236168a109cd"
+        name:
+          type: string
+          description: "The user-provided name for the room"
+          example: "Friday Night Drinks"
+        code:
+          type: string
+          description: "The 6-character code used to join the room"
+          example: "ABCDEF"
+        adminUser:
+          type: string
+          description: "The user ID of the room creator/admin"
+          example: "60d0fe4f5311236168a109ca"
+        participants:
+          type: array
+          description: "List of participants who have joined the room"
+          items:
+            $ref: "#/components/schemas/Participant"
+        categories:
+          type: array
+          description: "List of category IDs selected for the room"
+          items:
+            type: string
+          example: ["60d0fe4f5311236168a109cb"]
+        locations:
+          type: array
+          description: "List of proposed meeting locations"
+          items:
+            $ref: "#/components/schemas/Location"
+        status:
+          type: string
+          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed)"
+          enum: [waiting, voting, completed]
+          example: "waiting"
+        createdAt:
+          type: string
+          description: "The time when the room was created"
+          format: date-time
+    Location:
+      type: object
+      properties:
+        longitude:
+          type: number
+          description: "Geographic longitude"
+          example: 151.2313
+        latitude:
+          type: number
+          description: "Geographic latitude"
+          example: -33.9173
+        name:
+          type: string
+          description: "Name of the location"
+          example: "UNSW Sydney"
+        description:
+          type: string
+          description: "Full address or detailed description of the location"
+          example: "UNSW Sydney, High St, Kensington, New South Wales 2052, Australia"
+    Participant:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique subdocument ID of the participant"
+          example: "6a0bcaaaac4f7ecd2232505d"
+        userId:
+          type: string
+          nullable: true
+          description: "User ID of the participant if registered, null if guest"
+          example: "60d0fe4f5311236168a109ca"
+        name:
+          type: string
+          description: "Display name of the participant"
+          example: "Jenny"
+        location:
+          type: string
+          description: "Starting location of the participant"
+          example: "Epping, Sydney, NSW, Australia"
+        dietaryRequirements:
+          type: array
+          items:
+            type: string
+          description: "List of dietary restrictions"
+          example: ["Gluten-Free", "Vegan"]
+        preferences:
+          type: string
+          description: "Additional personal preferences or notes"
+          example: "Prefers outdoor seating"
+        transportationMode:
+          type: string
+          description: "Chosen mode of transit"
+          enum: [bus, train, metro, driving, cycling, walking]
+          example: "train"
+        isGuest:
+          type: boolean
+          description: "Whether the participant is a guest user"
+          example: true
+        isAdmin:
+          type: boolean
+          description: "Whether the participant is the admin of the room"
+          example: false
+        joinedAt:
+          type: string
+          format: date-time
+          description: "Timestamp when the participant joined the room"
