@@ -21,7 +21,9 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
     room.locations
   );
 
-  const draggedId = useRef<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+
   const [hasVoted, setHasVoted] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,16 +34,18 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
   // ─── Drag and drop handlers ───────────────────────────────────────────
 
   const handleDragStart = (locationId: string) => {
-    draggedId.current = locationId;
+    setDraggingId(locationId);
   };
 
   // Called when a dragged card is hovering over another card
   // reorder the list in real time so the user sees the new position
   const handleDragOver = (targetId: string) => {
-    if (!draggedId.current || draggedId.current === targetId) return;
+    if (!draggingId || draggingId === targetId) return;
+
+    setHoverId(targetId);
 
     setRankedLocations((prev) => {
-      const draggedIndex = prev.findIndex((l) => l._id === draggedId.current);
+      const draggedIndex = prev.findIndex((l) => l._id === draggingId);
       const targetIndex = prev.findIndex((l) => l._id === targetId);
 
       if (draggedIndex === -1 || targetIndex === -1) return prev;
@@ -55,7 +59,8 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
 
   // Called when the drag is released
   const handleDrop = () => {
-    draggedId.current = null;
+    setDraggingId(null); // clear both on drop
+    setHoverId(null);
   };
 
   // ─── Submit vote ──────────────────────────────────────────────────────
@@ -163,7 +168,8 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
                 location={location}
                 rank={index + 1}
                 category={category}
-                isDragging={draggedId.current === location._id}
+                isDragging={draggingId === location._id}
+                isHovered={hoverId === location._id}
                 onDragStart={() => handleDragStart(location._id!)}
                 onDragOver={() => handleDragOver(location._id!)}
                 onDrop={handleDrop}

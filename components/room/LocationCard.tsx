@@ -6,7 +6,8 @@ interface Props {
   location: Location;
   rank: number;              
   category?: Category;     
-  isDragging: boolean;      
+  isDragging: boolean;    
+  isHovered: boolean;  
   onDragStart: () => void;   
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
@@ -17,6 +18,7 @@ export default function LocationCard({
   rank,
   category,
   isDragging,
+  isHovered,
   onDragStart,
   onDragOver,
   onDrop,
@@ -36,7 +38,9 @@ export default function LocationCard({
       onDrop={onDrop}                 
       className={`flex items-center gap-4 rounded-xl border bg-white dark:bg-[#111] px-4 py-3 transition-all cursor-grab active:cursor-grabbing
         ${isDragging
-          ? "opacity-40 border-cyan-400 dark:border-cyan-600 scale-95"  // faded while being dragged
+          ? "opacity-30 border-cyan-400 dark:border-cyan-600 scale-95"  // faded while being dragged
+          : isHovered
+          ? "opacity-50 border-cyan-300 dark:border-cyan-700 scale-95"
           : "border-gray-200 dark:border-gray-800 hover:border-cyan-300 dark:hover:border-cyan-700"
         }`}
     >
@@ -44,9 +48,11 @@ export default function LocationCard({
       <GripVertical className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
 
       {/* Rank badge */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-600 text-white text-sm font-bold flex items-center justify-center">
-        {rank}
-      </div>
+      {/* {!isDragging && ( */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-600 text-white text-sm font-bold flex items-center justify-center">
+          {rank}
+        </div>
+      {/* )} */}
 
       {/* Location details */}
       <div className="flex-1 min-w-0">
