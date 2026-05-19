@@ -6,8 +6,6 @@ import { registerSchema } from "@/lib/schemas";
 import type { RegisterFormData } from "@/types/auth";
 import { useState } from "react";
 import InputField from "@/components/ui/inputs/InputField";
-import Image from "next/image";
-import EmailSentSuccess from "@/components/auth/EmailSentSuccess";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function RegisterForm() {
@@ -31,16 +29,11 @@ export default function RegisterForm() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   async function onSubmit(data: RegisterFormData) {
     setIsSubmitting(true);
-    setSuccessMessage(null);
     try {
       await registerUser(data);
-      setSuccessMessage(
-        "If this email is not already registered, you will receive a verification link.",
-      );
       reset();
     } catch (error) {
       void error;
@@ -49,10 +42,6 @@ export default function RegisterForm() {
       // Stop loading
       setIsSubmitting(false);
     }
-  }
-
-  if (successMessage) {
-    return <EmailSentSuccess message={successMessage} />;
   }
 
   return (

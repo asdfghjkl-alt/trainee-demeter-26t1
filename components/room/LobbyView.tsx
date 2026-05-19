@@ -6,7 +6,7 @@ import { getRoom } from "@/lib/rooms";
 import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
-import { Users } from "lucide-react";
+import { Users, Calendar } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
 
@@ -68,6 +68,19 @@ export default function LobbyView({
                 {cat.name}
               </span>
             ))}
+          </div>
+        )}
+        {room.date && (
+          <div className="flex items-center gap-1.5 text-sm text-cyan-600 dark:text-cyan-400 font-medium">
+            <Calendar className="w-4 h-4" />
+            <span>
+              {new Date(room.date).toLocaleDateString("en-AU", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
           </div>
         )}
         {room.description && (

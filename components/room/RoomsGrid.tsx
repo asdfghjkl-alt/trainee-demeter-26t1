@@ -9,6 +9,7 @@ import {
   Vote,
   MapPin,
   XCircle,
+  Calendar,
 } from "lucide-react";
 import type { Room } from "@/types/room";
 
@@ -125,6 +126,20 @@ function RoomCard({
                 +{room.categories.length - 3} more
               </span>
             )}
+          </div>
+        )}
+
+        {/* Event Date */}
+        {room.date && (
+          <div className="flex items-center gap-1.5 text-xs text-cyan-600 dark:text-cyan-400 font-medium">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span>
+              Event date: {new Date(room.date).toLocaleDateString("en-AU", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
           </div>
         )}
 
