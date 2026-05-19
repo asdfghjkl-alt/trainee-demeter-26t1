@@ -496,6 +496,98 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /rooms/{code}/votes:
+    post:
+      operationId: castVote
+      tags:
+        - Iteration 1
+        - Vote
+      summary: Submit a vote for locations in a room
+      description: Allows a participant to submit an ordered ranking of location IDs for a specific room.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - participantId
+                - rankings
+              properties:
+                participantId:
+                  type: string
+                  description: The participant ID casting the vote
+                  example: "6a0bcaaaac4f7ecd2232505d"
+                rankings:
+                  type: array
+                  description: Ordered list of location IDs
+                  items:
+                    type: string
+                  example: ["60d0fe4f5311236168a109ca", "60d0fe4f5311236168a109cb"]
+      responses:
+        "200":
+          description: Vote registered successfully
+        "400":
+          description: Invalid request or invalid location ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Vote already exists for this participant in this room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/votes/status:
+    get:
+      operationId: getVoteStatus
+      tags:
+        - Iteration 1
+        - Vote
+      summary: Get the count of votes submitted for a room
+      description: Retrieves the total count of votes cast so far in the room.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      responses:
+        "200":
+          description: Vote count retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  numVotes:
+                    type: integer
+                    example: 5
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
 components:
   securitySchemes:
     cookieAuth:
@@ -675,6 +767,10 @@ components:
             type: string
           description: "List of dietary restrictions"
           example: ["Gluten-Free", "Vegan"]
+        dietaryNotes:
+          type: string
+          description: "Additional dietary notes/allergies"
+          example: "Severe peanut allergy"
         preferences:
           type: string
           description: "Additional personal preferences or notes"
@@ -696,3 +792,32 @@ components:
           type: string
           format: date-time
           description: "Timestamp when the participant joined the room"
+    Vote:
+      type: object
+      properties:
+        _id:
+          type: string
+          description: "Unique identifier for the vote"
+          example: "60d0fe4f5311236168a109cf"
+        roomId:
+          type: string
+          description: "The Room ID this vote belongs to"
+          example: "60d0fe4f5311236168a109cd"
+        participantId:
+          type: string
+          description: "The participant ID who cast the vote"
+          example: "6a0bcaaaac4f7ecd2232505d"
+        rankings:
+          type: array
+          description: "Ordered list of location IDs (rankings)"
+          items:
+            type: string
+          example: ["60d0fe4f5311236168a109ca", "60d0fe4f5311236168a109cb"]
+        createdAt:
+          type: string
+          description: "Timestamp when the vote was created"
+          format: date-time
+        updatedAt:
+          type: string
+          description: "Timestamp when the vote was last updated"
+          format: date-time
