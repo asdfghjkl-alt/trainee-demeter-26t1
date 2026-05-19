@@ -63,7 +63,7 @@ export default function ParticipantList({ participants }: Props) {
 
           {/* Transport */}
           <div
-            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 flex-shrink-0"
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 shrink-0"
             title={transportLabels[p.transportationMode]}
           >
             {transportIcons[p.transportationMode]}

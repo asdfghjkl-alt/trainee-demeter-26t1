@@ -56,13 +56,13 @@ export default function ShareRoomCard({ code }: Props) {
 
       {/* Shareable Link */}
       <div className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] px-4 py-3">
-        <Link2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+        <Link2 className="w-4 h-4 text-gray-400 shrink-0" />
         <p className="text-sm text-gray-600 dark:text-gray-300 truncate flex-1">
           {shareUrl}
         </p>
         <button
           onClick={() => copyToClipboard(shareUrl, "link")}
-          className="btn flex items-center gap-1 text-xs border-gray-300 dark:border-gray-700 flex-shrink-0"
+          className="btn flex items-center gap-1 text-xs border-gray-300 dark:border-gray-700 shrink-0"
           aria-label="Copy share link"
         >
           {copiedLink ? (
