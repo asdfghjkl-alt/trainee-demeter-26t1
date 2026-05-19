@@ -276,7 +276,6 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-
   /rooms/{code}:
     get:
       operationId: getRoom
@@ -414,7 +413,6 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   /rooms/{code}/locations:
-
     post:
       operationId: addLocation
       tags:
@@ -604,8 +602,8 @@ components:
             $ref: "#/components/schemas/Location"
         status:
           type: string
-          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed)"
-          enum: [waiting, voting, completed]
+          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed, closed = room permanently closed and hidden from listings)"
+          enum: [waiting, voting, completed, closed]
           example: "waiting"
         createdAt:
           type: string

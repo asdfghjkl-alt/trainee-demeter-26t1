@@ -10,11 +10,11 @@ interface Props {
 export default function ShareRoomCard({ code }: Props) {
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [shareUrl, setShareUrl] = useState(`/rooms/${code}`);
+  const [shareUrl, setShareUrl] = useState(`/rooms/${code}/join`);
 
   // Runs only on the client — avoids SSR/hydration mismatch
   useEffect(() => {
-    setShareUrl(`${window.location.origin}/rooms/${code}`);
+    setShareUrl(`${window.location.origin}/rooms/${code}/join`);
   }, [code]);
 
   const copyToClipboard = async (text: string, which: "code" | "link") => {

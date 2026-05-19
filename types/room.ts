@@ -3,7 +3,7 @@ import type { TransportationMode } from "@/lib/constants";
 export type { TransportationMode };
 
 // Matches Edward's status enum exactly
-export type RoomStatus = "waiting" | "voting" | "completed";
+export type RoomStatus = "waiting" | "voting" | "completed" | "closed";
 
 // Matches Edward's Category schema
 export interface Category {
