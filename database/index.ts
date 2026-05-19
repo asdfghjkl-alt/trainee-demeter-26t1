@@ -5,5 +5,11 @@ export { default as Category } from "./category.model";
 
 // Types
 export type { IUser } from "./user.model";
-export type { IRoom } from "./room.model";
+export type {
+  IRoom,
+  IParticipant,
+  ILocation,
+  TransportationMode,
+} from "./room.model";
+export { TRANSPORTATION_MODES } from "./room.model";
 export type { ICategory } from "./category.model";

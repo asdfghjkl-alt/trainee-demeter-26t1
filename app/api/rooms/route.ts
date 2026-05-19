@@ -1,7 +1,8 @@
+import mongoose from "mongoose";
 import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 import connectToDatabase from "@/lib/mongodb";
-import { Room, Category, User } from "@/database";
+import { Room, Category, User, IParticipant } from "@/database";
 import { getSession } from "@/lib/session";
 import { roomSchema } from "@/lib/schemas";
 
@@ -15,22 +16,18 @@ function generateCode() {
 }
 
 export const POST = apiHandler(async (req: NextRequest) => {
-  // Check if user is logged in
   const session = await getSession();
   if (!session || !session.userData) {
     return NextResponse.json({ message: "Page not found" }, { status: 404 });
   }
 
-  // Connect to the database
   await connectToDatabase();
 
-  // Check if user exists
   const user = await User.findById(session.userData._id);
   if (!user) {
     return NextResponse.json({ message: "Page not found" }, { status: 404 });
   }
 
-  // Parse request body
   const body = await req.json();
   const { error, value } = roomSchema.validate(body);
 
@@ -41,9 +38,15 @@ export const POST = apiHandler(async (req: NextRequest) => {
     );
   }
 
-  const { name, categoryIds } = value;
+  const {
+    name,
+    categoryIds,
+    location,
+    dietaryRequirements,
+    preferences,
+    transportationMode,
+  } = value;
 
-  // Validate all categories exist in the database
   const existingCategories = await Category.find({ _id: { $in: categoryIds } });
   if (existingCategories.length !== categoryIds.length) {
     return NextResponse.json(
@@ -61,7 +64,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     code = generateCode();
     const existingRoom = await Room.findOne({
       code,
-      status: { $nin: ["closed", "ended"] },
+      status: { $ne: "completed" },
     });
 
     if (!existingRoom) {
@@ -77,20 +80,35 @@ export const POST = apiHandler(async (req: NextRequest) => {
     );
   }
 
-  // Create the new room
+  const adminParticipant: IParticipant = {
+    userId: new mongoose.Types.ObjectId(session.userData._id),
+    name: user.fname,
+    location,
+    dietaryRequirements,
+    preferences,
+    transportationMode,
+    isGuest: false,
+    isAdmin: true,
+    joinedAt: new Date(),
+  };
+
   const newRoom = new Room({
     name,
     code,
     adminUser: session.userData._id,
-    participants: [session.userData._id], // Add the creator as the first participant
+    participants: [adminParticipant],
     categories: categoryIds,
-    status: "open",
+    status: "waiting",
   });
 
   await newRoom.save();
 
   return NextResponse.json(
-    { message: "Room created successfully", room: newRoom },
+    {
+      message: "Room created successfully",
+      room: newRoom,
+      joinUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/rooms/${code}/join`,
+    },
     { status: 201 },
   );
 });

@@ -23,8 +23,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   const foundUser = await User.findOne({ email });
 
-  // Returns generic error on no user found or user not activated
-  if (!foundUser || !foundUser.activated) {
+  // Returns generic error on no user found
+  if (!foundUser) {
     return NextResponse.json(
       { message: "Either email or password is incorrect" },
       { status: 404 },
@@ -47,7 +47,6 @@ export const POST = apiHandler(async (req: NextRequest) => {
     email: foundUser.email,
     fname: foundUser.fname,
     admin: foundUser.admin,
-    membership: foundUser.membership,
   };
 
   await createSession({

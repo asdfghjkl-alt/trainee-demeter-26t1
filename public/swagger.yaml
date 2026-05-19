@@ -508,9 +508,9 @@ components:
             $ref: "#/components/schemas/Location"
         status:
           type: string
-          description: "Current phase of the room (open, closed, or ended)"
-          enum: [open, closed, ended]
-          example: "open"
+          description: "Current phase of the room (waiting = lobby open, voting = vote in progress, completed = results revealed)"
+          enum: [waiting, voting, completed]
+          example: "waiting"
         createdAt:
           type: string
           description: "The time when the room was created"

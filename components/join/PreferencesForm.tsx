@@ -298,10 +298,12 @@ export default function PreferencesForm({
               }`}
             >
               <option value="">Select transportation mode</option>
+              <option value="bus">Bus</option>
+              <option value="train">Train</option>
+              <option value="metro">Metro</option>
               <option value="driving">Driving</option>
-              <option value="transit">Transit</option>
-              <option value="walking">Walking</option>
               <option value="cycling">Cycling</option>
+              <option value="walking">Walking</option>
             </select>
             {errors.transportationMode && (
               <p className="mt-1 text-sm text-red-500">
