@@ -21,7 +21,6 @@ export const GET = apiHandler(async (_req: NextRequest, ctx?: Context) => {
   const room = await Room.findOne({ code })
     .populate("participants", "_id fname lname")
     .lean();
-  console.log(room);
   if (!room) {
     return NextResponse.json({ message: "Room not found" }, { status: 404 });
   }
