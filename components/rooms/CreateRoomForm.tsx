@@ -16,6 +16,9 @@ type CreateRoomFormData = {
   location: string;
   transportationMode: string;
   useCurrentLocation: boolean;
+  dietaryRequirements: string[];
+  dietaryNotes: string;
+  preferences: string;
 };
 
 export default function CreateRoomForm({
@@ -43,6 +46,9 @@ export default function CreateRoomForm({
       location: "",
       transportationMode: "",
       useCurrentLocation: false,
+      dietaryRequirements: [],
+      dietaryNotes: "",
+      preferences: "",
     },
   });
 
@@ -73,7 +79,7 @@ export default function CreateRoomForm({
   };
 
   const availableCategories = categories.filter(
-    (cat) => !selectedCategoryIds.includes(cat._id)
+    (cat) => !selectedCategoryIds.includes(cat._id),
   );
 
   // Geolocation States
@@ -201,8 +207,9 @@ export default function CreateRoomForm({
         transportationMode: data.transportationMode,
         date: data.date ? new Date(data.date).toISOString() : undefined,
         description: data.description.trim() || undefined,
-        dietaryRequirements: [],
-        preferences: "",
+        dietaryRequirements: data.dietaryRequirements,
+        dietaryNotes: data.dietaryNotes,
+        preferences: data.preferences,
       };
 
       const res = await api.post("/rooms", payload);
@@ -339,9 +346,7 @@ export default function CreateRoomForm({
                 </svg>
               </div>
               {categoryError && (
-                <p className="mt-1 text-sm text-red-500">
-                  {categoryError}
-                </p>
+                <p className="mt-1 text-sm text-red-500">{categoryError}</p>
               )}
             </div>
           </div>
@@ -480,6 +485,62 @@ export default function CreateRoomForm({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Dietary Requirements */}
+            <div className="mt-5">
+              <label className="my-2 block font-medium text-gray-900 dark:text-white">
+                Your Dietary Requirements
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4">
+                {[
+                  "Vegetarian",
+                  "Vegan",
+                  "Gluten Free",
+                  "Halal",
+                  "Kosher",
+                  "Nut Allergy",
+                ].map((item) => (
+                  <label
+                    key={item}
+                    className="flex items-center gap-2.5 text-sm text-gray-700 transition-colors hover:text-cyan-600 dark:text-gray-300 dark:hover:text-cyan-400 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      value={item}
+                      {...register("dietaryRequirements")}
+                      className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500 dark:border-gray-700 bg-white dark:bg-[#0a0a0a]"
+                    />
+                    <span>{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Additional Dietary Notes */}
+            <div className="mt-4">
+              <label className="my-2 block font-medium text-gray-900 dark:text-white">
+                Additional Dietary Notes
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Any allergies or additional dietary notes..."
+                {...register("dietaryNotes")}
+                className="w-full resize-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4 text-base text-gray-900 dark:text-gray-100 outline-none transition duration-200 focus:border-cyan-500 dark:focus:border-cyan-500"
+              />
+            </div>
+
+            {/* Preferences */}
+            <div className="mt-4">
+              <label className="my-2 block font-medium text-gray-900 dark:text-white">
+                Preferences
+              </label>
+              <textarea
+                rows={3}
+                placeholder="Any seating, accessibility, or event preferences..."
+                {...register("preferences")}
+                className="w-full resize-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-4 text-base text-gray-900 dark:text-gray-100 outline-none transition duration-200 focus:border-cyan-500 dark:focus:border-cyan-500"
+              />
             </div>
           </div>
 

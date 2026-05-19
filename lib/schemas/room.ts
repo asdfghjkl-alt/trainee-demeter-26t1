@@ -35,6 +35,9 @@ export const roomSchema = Joi.object({
   dietaryRequirements: Joi.array()
     .items(Joi.string().trim().min(1).max(50))
     .default([]),
+  dietaryNotes: Joi.string().trim().max(500).allow("").default("").messages({
+    "string.max": "Dietary notes must be at most 500 characters",
+  }),
   preferences: Joi.string().trim().max(500).allow("").default("").messages({
     "string.max": "Preferences must be at most 500 characters",
   }),

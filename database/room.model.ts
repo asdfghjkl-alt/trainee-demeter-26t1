@@ -13,6 +13,7 @@ export interface IParticipant {
   name: string;
   location: string;
   dietaryRequirements: string[];
+  dietaryNotes?: string;
   preferences: string;
   transportationMode: TransportationMode;
   isGuest: boolean;
@@ -46,6 +47,7 @@ const participantSchema = new Schema<IParticipant>(
     name: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     dietaryRequirements: [{ type: String }],
+    dietaryNotes: { type: String, default: "" },
     preferences: { type: String, default: "" },
     transportationMode: {
       type: String,

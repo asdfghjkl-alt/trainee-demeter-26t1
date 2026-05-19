@@ -25,7 +25,8 @@ export interface Participant {
   userId?: string;
   name: string;
   location: string;
-  dietaryRequirements?: string;
+  dietaryRequirements?: string[];
+  dietaryNotes?: string;
   preferences?: string;
   transportationMode: TransportationMode;
   isGuest: boolean;

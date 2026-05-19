@@ -70,6 +70,11 @@ export default function LobbyView({
             ))}
           </div>
         )}
+        {room.description && (
+          <p className="text-gray-600 dark:text-gray-300 text-sm whitespace-pre-wrap bg-gray-50/50 dark:bg-gray-900/30 p-3 rounded-xl border border-gray-100 dark:border-gray-800/80">
+            {room.description}
+          </p>
+        )}
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           Share the code or link below so everyone can join.
         </p>

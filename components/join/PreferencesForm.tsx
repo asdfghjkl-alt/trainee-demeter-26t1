@@ -128,6 +128,7 @@ export default function PreferencesForm({
         name: data.name,
         location: data.location,
         dietaryRequirements: data.dietaryRequirements,
+        dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         transportationMode: data.transportationMode,
       });
@@ -135,6 +136,7 @@ export default function PreferencesForm({
         name: data.name,
         location: data.location,
         dietaryRequirements: data.dietaryRequirements,
+        dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         transportationMode: data.transportationMode,
       });
