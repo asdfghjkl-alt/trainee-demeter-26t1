@@ -4,26 +4,21 @@ import { Vote, Room } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
 import { getSession } from "@/lib/session";
 
-export const POST = apiHandler(async (
-    req: NextRequest,
-    { params }: { params: { code: string } }
-) => {
+export const POST = apiHandler(
+  async (req: NextRequest, { params }: { params: { code: string } }) => {
     const body = await req.json();
     let { participantId, rankings } = body;
     const roomCode = params.code;
 
     const session = await getSession();
-    
+
     // if logged in, validate vote using userId
     if (session) {
-        participantId = session.userData._id;
+      participantId = session.userData._id;
     }
 
     if (!participantId || !Array.isArray(rankings)) {
-        return NextResponse.json(
-            { message: "Invalid request"},
-            { status: 400 }
-        )
+      return NextResponse.json({ message: "Invalid request" }, { status: 400 });
     }
 
     await connectToDatabase();
@@ -31,45 +26,42 @@ export const POST = apiHandler(async (
     // Check if the room exists
     const room = await Room.findOne({ code: roomCode });
     if (!room) {
-        return NextResponse.json(
-            { message: "Room not found" },
-            { status: 404 }
-        );
+      return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
     // Validate that all ranked location IDs exist in the room's locations
     const roomLocationIds = new Set(
-        room.locations.map((loc: any) => loc._id.toString())
+      room.locations.map((loc: any) => loc._id.toString()),
     );
 
-    const allRankingsValid = rankings.every((rankId: string) => roomLocationIds.has(rankId));
+    const allRankingsValid = rankings.every((rankId: string) =>
+      roomLocationIds.has(rankId),
+    );
 
     if (!allRankingsValid) {
-        return NextResponse.json(
-            { message: "One or more ranked locations are invalid for this room" },
-            { status: 400 }
-        );
+      return NextResponse.json(
+        { message: "One or more ranked locations are invalid for this room" },
+        { status: 400 },
+      );
     }
 
     // check for duplicates
-    const exists = await Vote.findOne({ roomCode, participantId });
+    const exists = await Vote.findOne({ roomId: room._id, participantId });
 
     if (exists) {
-        return NextResponse.json(
-            { message: "Only one vote accepted from each user"},
-            { status: 409 }
-        )
+      return NextResponse.json(
+        { message: "Only one vote accepted from each user" },
+        { status: 409 },
+      );
     }
 
     // store the vote in database
     await Vote.create({
-        roomCode: roomCode,
-        participantId: participantId,
-        rankings: rankings,
+      roomId: room._id,
+      participantId: participantId,
+      rankings: rankings,
     });
 
-    return NextResponse.json(
-        { status: 200 }
-    );
-});
-
+    return NextResponse.json({ status: 200 });
+  },
+);

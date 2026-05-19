@@ -17,8 +17,8 @@ export const GET = apiHandler(
       return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
-    // obtain the number of votes with roomCode = room code
-    const numVotes = await Vote.countDocuments({ roomCode: roomCode });
+    // obtain the number of votes
+    const numVotes = await Vote.countDocuments({ roomId: room._id });
 
     return NextResponse.json({ numVotes: numVotes }, { status: 200 });
   },

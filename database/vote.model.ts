@@ -1,8 +1,8 @@
-import mongoose, { models } from "mongoose";
+import mongoose, { models, Schema } from "mongoose";
 
 export interface IVote {
   _id: string;
-  roomCode: string; // which room this vote belongs to
+  roomId: mongoose.Types.ObjectId; // which room this vote belongs to
   participantId: string; // who voted
   rankings: string[]; // ordered list of location IDs
   createdAt: Date;
@@ -11,7 +11,7 @@ export interface IVote {
 
 const voteSchema = new mongoose.Schema<IVote>(
   {
-    roomCode: { type: String, required: true, index: true },
+    roomId: { type: Schema.Types.ObjectId, ref: "Room", required: true, index: true },
     participantId: { type: String, required: true, index: true },
     rankings: {
       type: [String],
