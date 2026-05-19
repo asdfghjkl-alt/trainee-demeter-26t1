@@ -2,13 +2,12 @@ import { User } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
 import connectToDatabase from "@/lib/mongodb";
 import { registerSchema } from "@/lib/schemas/auth";
-import { generateVerificationToken } from "@/lib/tokens";
+import { createSession } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const body = await req.json();
-  // Validates the user's registration information with the schema
   const { error, value } = registerSchema.validate(body);
 
   if (error) {
@@ -22,40 +21,35 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   await connectToDatabase();
 
-  // Check if user already exists with the corresponding email
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return NextResponse.json(
-      {
-        message:
-          "If this email is not already registered, you will receive a verification link.",
-      },
-      { status: 201 },
+      { message: "An account with this email already exists" },
+      { status: 409 },
     );
   }
 
-  // Hashes passwords with 12 levels of salting
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  // Generates a new verification token for the user
-  const { token, hashedToken, expires } = generateVerificationToken();
-
-  // Creates the new user in the database
-  await User.create({
+  const newUser = await User.create({
     email,
     fname,
     lname,
     phone,
     password: hashedPassword,
-    emailToken: hashedToken,
-    emailTokenExpires: expires,
   });
 
+  const userData = {
+    _id: newUser._id.toString(),
+    email: newUser.email,
+    fname: newUser.fname,
+    admin: newUser.admin,
+  };
+
+  await createSession({ userData });
+
   return NextResponse.json(
-    {
-      message:
-        "If this email is not already registered, you will receive a verification link.",
-    },
+    { message: "Registration successful", user: userData },
     { status: 201 },
   );
 });

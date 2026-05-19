@@ -7,14 +7,43 @@ export interface ILocation {
   description?: string;
 }
 
+export type TransportationMode =
+  | "bus"
+  | "train"
+  | "metro"
+  | "driving"
+  | "cycling"
+  | "walking";
+
+export const TRANSPORTATION_MODES: TransportationMode[] = [
+  "bus",
+  "train",
+  "metro",
+  "driving",
+  "cycling",
+  "walking",
+];
+
+export interface IParticipant {
+  userId: mongoose.Types.ObjectId | null;
+  name: string;
+  location: string;
+  dietaryRequirements: string[];
+  preferences: string;
+  transportationMode: TransportationMode;
+  isGuest: boolean;
+  isAdmin: boolean;
+  joinedAt: Date;
+}
+
 export interface IRoom extends Document {
   name: string; // The user-provided name for the room
   code: string; // The code used to join the room
   adminUser: mongoose.Types.ObjectId;
-  participants: mongoose.Types.ObjectId[];
+  participants: IParticipant[];
   categories: mongoose.Types.ObjectId[];
   locations: ILocation[];
-  status: "open" | "closed" | "ended";
+  status: "waiting" | "voting" | "completed";
   createdAt: Date; // The time when the room was created
 }
 
@@ -25,17 +54,36 @@ const locationSchema = new Schema<ILocation>({
   description: { type: String },
 });
 
+const participantSchema = new Schema<IParticipant>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    name: { type: String, required: true, trim: true },
+    location: { type: String, required: true, trim: true },
+    dietaryRequirements: [{ type: String }],
+    preferences: { type: String, default: "" },
+    transportationMode: {
+      type: String,
+      enum: TRANSPORTATION_MODES,
+      required: true,
+    },
+    isGuest: { type: Boolean, required: true },
+    isAdmin: { type: Boolean, default: false },
+    joinedAt: { type: Date, default: Date.now },
+  },
+  { _id: true },
+);
+
 const roomSchema = new Schema<IRoom>({
   name: { type: String, required: true },
   code: { type: String, required: true },
   adminUser: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  participants: [{ type: Schema.Types.ObjectId, ref: "User" }],
+  participants: { type: [participantSchema], default: [] },
   categories: [{ type: Schema.Types.ObjectId, ref: "Category" }],
   locations: [locationSchema],
   status: {
     type: String,
-    enum: ["open", "closed", "ended"],
-    default: "open",
+    enum: ["waiting", "voting", "completed"],
+    default: "waiting",
   },
   createdAt: { type: Date, default: Date.now },
 });

@@ -24,16 +24,7 @@ export const preferencesSchema = Joi.object({
   }),
 
   dietaryRequirements: Joi.array()
-    .items(
-      Joi.string().valid(
-        "Vegetarian",
-        "Vegan",
-        "Gluten Free",
-        "Halal",
-        "Kosher",
-        "Nut Allergy",
-      ),
-    )
+    .items(Joi.string().trim().min(1).max(50))
     .optional()
     .default([]),
 
@@ -46,11 +37,11 @@ export const preferencesSchema = Joi.object({
   }),
 
   transportationMode: Joi.string()
-    .valid("driving", "transit", "walking", "cycling")
+    .valid("bus", "train", "metro", "driving", "cycling", "walking")
     .required()
     .messages({
       "any.only":
-        "Transportation mode must be one of: Driving, Transit, Walking, Cycling",
+        "Transportation mode must be one of: Bus, Train, Metro, Driving, Cycling, Walking",
       "any.required": "Please select a transportation mode",
       "string.empty": "Please select a transportation mode",
     }),
