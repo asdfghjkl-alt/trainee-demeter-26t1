@@ -63,7 +63,7 @@ const participantSchema = new Schema<IParticipant>(
 
 const roomSchema = new Schema<IRoom>({
   name: { type: String, required: true },
-  code: { type: String, required: true },
+  code: { type: String, required: true, unique: true },
   adminUser: { type: Schema.Types.ObjectId, ref: "User", required: true },
   participants: { type: [participantSchema], default: [] },
   categories: [{ type: Schema.Types.ObjectId, ref: "Category" }],
