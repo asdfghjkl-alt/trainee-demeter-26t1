@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import { Vote, Room } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
-import { getSession } from "@/lib/session";
 
 export const POST = apiHandler(
   async (req: NextRequest, { params }: { params: { code: string } }) => {
