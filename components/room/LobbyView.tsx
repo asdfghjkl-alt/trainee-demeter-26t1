@@ -56,8 +56,20 @@ export default function LobbyView({
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header */}
-      <div className="space-y-1">
+      <div className="space-y-3">
         <h1 className="text-gray-900 dark:text-white">{room.name}</h1>
+        {room.categories && room.categories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {room.categories.map((cat) => (
+              <span
+                key={cat._id}
+                className="px-2 py-0.5 text-[11px] font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full"
+              >
+                {cat.name}
+              </span>
+            ))}
+          </div>
+        )}
         <p className="text-gray-500 dark:text-gray-400 text-sm">
           Share the code or link below so everyone can join.
         </p>

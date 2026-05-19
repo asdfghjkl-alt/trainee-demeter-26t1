@@ -14,7 +14,7 @@ export const GET = apiHandler(async (req: NextRequest, ctx?: Context) => {
 
   await connectToDatabase();
 
-  const room = await Room.findOne({ code }).lean();
+  const room = await Room.findOne({ code }).populate("categories").lean();
   if (!room) {
     return NextResponse.json({ message: "Room not found" }, { status: 404 });
   }
@@ -25,19 +25,22 @@ export const GET = apiHandler(async (req: NextRequest, ctx?: Context) => {
 
   if (participantId) {
     isAuthorized = room.participants.some(
-      (p: any) => p._id && p._id.toString() === participantId
+      (p: any) => p._id && p._id.toString() === participantId,
     );
   } else {
     const session = await getSession();
     if (session?.userData?._id) {
       isAuthorized = room.participants.some(
-        (p: any) => p.userId && p.userId.toString() === session.userData._id
+        (p: any) => p.userId && p.userId.toString() === session.userData._id,
       );
     }
   }
 
   if (!isAuthorized) {
-    return NextResponse.json({ message: "Unauthorized to access this room" }, { status: 401 });
+    return NextResponse.json(
+      { message: "Unauthorized to access this room" },
+      { status: 401 },
+    );
   }
 
   return NextResponse.json({ room }, { status: 200 });

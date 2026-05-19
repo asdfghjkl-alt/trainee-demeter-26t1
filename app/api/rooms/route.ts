@@ -45,6 +45,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
     dietaryRequirements,
     preferences,
     transportationMode,
+    date,
+    description,
   } = value;
 
   const existingCategories = await Category.find({ _id: { $in: categoryIds } });
@@ -99,6 +101,8 @@ export const POST = apiHandler(async (req: NextRequest) => {
     participants: [adminParticipant],
     categories: categoryIds,
     status: "waiting",
+    date: date ? new Date(date) : undefined,
+    description,
   });
 
   await newRoom.save();

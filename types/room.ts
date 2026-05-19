@@ -41,5 +41,7 @@ export interface Room {
   categories: Category[];      
   locations: Location[];
   status: RoomStatus;    
+  date?: string;
+  description?: string;
   createdAt: string;
 }

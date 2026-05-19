@@ -28,6 +28,8 @@ export interface IRoom extends Document {
   categories: mongoose.Types.ObjectId[];
   locations: ILocation[];
   status: "waiting" | "voting" | "completed" | "closed";
+  date?: Date;
+  description?: string;
   createdAt: Date; // The time when the room was created
 }
 
@@ -69,6 +71,8 @@ const roomSchema = new Schema<IRoom>({
     enum: ["waiting", "voting", "completed", "closed"],
     default: "waiting",
   },
+  date: { type: Date },
+  description: { type: String },
   createdAt: { type: Date, default: Date.now },
 });
 
