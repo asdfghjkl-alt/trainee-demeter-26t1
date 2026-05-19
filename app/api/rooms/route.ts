@@ -65,10 +65,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   while (!isUnique && attempts < 10) {
     code = generateCode();
-    const existingRoom = await Room.findOne({
-      code,
-      status: { $ne: "completed" },
-    });
+    const existingRoom = await Room.findOne({ code });
 
     if (!existingRoom) {
       isUnique = true;
