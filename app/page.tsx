@@ -26,7 +26,11 @@ export default function Home() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <button className="flex items-center justify-center rounded-full bg-cyan-600 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-cyan-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-[#0a0a0a]">
+              <button
+                type="button"
+                onClick={() => router.push("/rooms/create")}
+                className="flex items-center justify-center rounded-full bg-cyan-600 px-8 py-4 text-base font-semibold text-white transition-all hover:bg-cyan-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 dark:focus:ring-offset-[#0a0a0a]"
+              >
                 Create a meetup
               </button>
               
