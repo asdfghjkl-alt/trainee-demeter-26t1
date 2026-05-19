@@ -31,6 +31,7 @@ MONGODB_URI='mongodb://localhost:27017/rendezvous'
 JWT_SECRET='random string'
 JWT_NAME='rendezvous_auth'
 NEXT_PUBLIC_BASE_URL='http://localhost:3000'
+NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
 ```
 
 _(Note: Be sure to change `JWT_SECRET` to a secure, random string in production!)_
@@ -50,3 +51,12 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application!
+
+### 5. API Documentation
+
+This project provides an interactive Swagger UI to easily explore and test the backend API endpoints.
+
+To access the documentation:
+1. Ensure the development server is running (`npm run dev`).
+2. Navigate to [http://localhost:3000/api-docs](http://localhost:3000/api-docs) in your browser.
+3. You can also view or lint the raw OpenAPI 3.0 specification file directly at `public/swagger.yaml`.
