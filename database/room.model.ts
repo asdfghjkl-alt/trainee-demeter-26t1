@@ -1,4 +1,5 @@
 import mongoose, { models, Schema, Document } from "mongoose";
+import { TRANSPORTATION_MODES, TransportationMode } from "@/lib/constants";
 
 export interface ILocation {
   latitude: number;
@@ -6,23 +7,6 @@ export interface ILocation {
   name: string;
   description?: string;
 }
-
-export type TransportationMode =
-  | "bus"
-  | "train"
-  | "metro"
-  | "driving"
-  | "cycling"
-  | "walking";
-
-export const TRANSPORTATION_MODES: TransportationMode[] = [
-  "bus",
-  "train",
-  "metro",
-  "driving",
-  "cycling",
-  "walking",
-];
 
 export interface IParticipant {
   userId: mongoose.Types.ObjectId | null;
@@ -33,7 +17,7 @@ export interface IParticipant {
   transportationMode: TransportationMode;
   isGuest: boolean;
   isAdmin: boolean;
-  joinedAt: Date;
+  joinedAt?: Date;
 }
 
 export interface IRoom extends Document {
@@ -66,7 +50,7 @@ const participantSchema = new Schema<IParticipant>(
       enum: TRANSPORTATION_MODES,
       required: true,
     },
-    isGuest: { type: Boolean, required: true },
+    isGuest: { type: Boolean, default: false },
     isAdmin: { type: Boolean, default: false },
     joinedAt: { type: Date, default: Date.now },
   },

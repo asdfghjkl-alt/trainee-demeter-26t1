@@ -1,9 +1,9 @@
-// types/room.ts
+import type { TransportationMode } from "@/lib/constants";
 
-export type TransportationMode = "driving" | "transit" | "walking" | "cycling";
+export type { TransportationMode };
 
 // Matches Edward's status enum exactly
-export type RoomStatus = "open" | "closed" | "ended";
+export type RoomStatus = "waiting" | "voting" | "completed";
 
 // Matches Edward's Category schema
 export interface Category {

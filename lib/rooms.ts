@@ -2,9 +2,14 @@
 import api from "@/lib/axios";
 import type { Room } from "@/types/room";
 
-export async function getRoom(code: string): Promise<Room | null> {
+export async function getRoom(
+  code: string,
+  participantId?: string,
+): Promise<Room | null> {
   try {
-    const res = await api.get(`/rooms/${code}`);
+    const res = await api.get(`/rooms/${code}`, {
+      params: participantId ? { participantId } : undefined,
+    });
     return res.data.room;
   } catch {
     return null;
@@ -15,10 +20,10 @@ export async function getRoom(code: string): Promise<Room | null> {
 // Delete once GET /api/rooms/[code] is live
 export const MOCK_ROOM: Room = {
   _id: "mock123",
-  name: "TP Dinnor",    
+  name: "TP Dinnor",
   code: "ABC123",
-  adminUser: "mock_user_admin",   
-  status: "open",               
+  adminUser: "mock_user_admin",
+  status: "waiting",
   categories: [
     { _id: "cat1", name: "Restaurants" },
     { _id: "cat2", name: "Bars" },
@@ -31,7 +36,7 @@ export const MOCK_ROOM: Room = {
       userId: "mock_user_admin",
       name: "Aidan",
       location: "Fitzroy",
-      transportationMode: "transit",
+      transportationMode: "train",
       isGuest: false,
       isAdmin: true,
     },

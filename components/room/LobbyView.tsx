@@ -12,16 +12,19 @@ const POLL_INTERVAL_MS = 5000; // 5 seconds
 
 interface Props {
   initialRoom: Room;
-  currentUserId: string;
+  currentParticipantId: string;
 }
 
-export default function LobbyView({ initialRoom, currentUserId }: Props) {
+export default function LobbyView({
+  initialRoom,
+  currentParticipantId,
+}: Props) {
   const [room, setRoom] = useState<Room>(initialRoom);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRoom = useCallback(async () => {
     try {
-      const data = await getRoom(initialRoom.code);
+      const data = await getRoom(initialRoom.code, currentParticipantId);
       if (!data) {
         setError("Room not found.");
         return;
@@ -30,7 +33,7 @@ export default function LobbyView({ initialRoom, currentUserId }: Props) {
     } catch {
       setError("Failed to load room.");
     }
-  }, [initialRoom.code]);
+  }, [initialRoom.code, currentParticipantId]);
 
   // Poll for updates every POLL_INTERVAL_MS
   useEffect(() => {
@@ -39,8 +42,8 @@ export default function LobbyView({ initialRoom, currentUserId }: Props) {
   }, [fetchRoom]);
 
   const isAdmin =
-    room.adminUser === currentUserId ||
-    room.participants.find((p) => p.userId === currentUserId)?.isAdmin === true;
+    room.participants.find((p) => p._id === currentParticipantId)?.isAdmin ===
+    true;
 
   if (error) {
     return (
@@ -80,7 +83,9 @@ export default function LobbyView({ initialRoom, currentUserId }: Props) {
       ) : (
         <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
           <p className="font-medium">Waiting for the admin to start voting…</p>
-          <p className="text-sm mt-1">Sit tight! You'll be redirected automatically.</p>
+          <p className="text-sm mt-1">
+            Sit tight! You'll be redirected automatically.
+          </p>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { TRANSPORTATION_MODES } from "@/database";
+import { TRANSPORTATION_MODES } from "@/lib/constants";
 
 export const joinRoomSchema = Joi.object({
   // Optional + allow empty in the schema; the handler enforces the

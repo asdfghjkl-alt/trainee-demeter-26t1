@@ -93,10 +93,10 @@ export const POST = apiHandler(
       transportationMode: value.transportationMode,
       isGuest,
       isAdmin: !isGuest && room.adminUser.toString() === session!.userData._id,
-      joinedAt: new Date(),
     };
 
     room.participants.push(participant);
+    console.log(room.participants);
     await room.save();
 
     const saved = room.participants[room.participants.length - 1];

@@ -8,21 +8,36 @@ interface Context {
   params: Promise<{ code: string }>;
 }
 
-export const GET = apiHandler(async (_req: NextRequest, ctx?: Context) => {
-  const session = await getSession();
-  if (!session || !session.userData) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
+export const GET = apiHandler(async (req: NextRequest, ctx?: Context) => {
   const { code } = await ctx!.params;
+  const participantId = req.nextUrl.searchParams.get("participantId");
 
   await connectToDatabase();
 
-  const room = await Room.findOne({ code })
-    .populate("participants", "_id fname lname")
-    .lean();
+  const room = await Room.findOne({ code }).lean();
   if (!room) {
     return NextResponse.json({ message: "Room not found" }, { status: 404 });
+  }
+
+  // Authorize request: either the participantId is in the room's participants list,
+  // or a logged-in user matches one of the participants.
+  let isAuthorized = false;
+
+  if (participantId) {
+    isAuthorized = room.participants.some(
+      (p: any) => p._id.toString() === participantId
+    );
+  } else {
+    const session = await getSession();
+    if (session?.userData) {
+      isAuthorized = room.participants.some(
+        (p: any) => p.userId?.toString() === session.userData._id
+      );
+    }
+  }
+
+  if (!isAuthorized) {
+    return NextResponse.json({ message: "Unauthorized to access this room" }, { status: 401 });
   }
 
   return NextResponse.json({ room }, { status: 200 });

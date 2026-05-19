@@ -1,9 +1,10 @@
 import { getSession } from "@/lib/session";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import LobbyView from "@/components/room/LobbyView";
 import connectToDatabase from "@/lib/mongodb";
 import RoomModel from "@/database/room.model";
+import { getGuestParticipantId } from "@/lib/guest";
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -18,31 +19,52 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function RoomPage({ params }: Props) {
   const { code } = await params;
-  const session = await getSession();
-
-  // Must be logged in to view a room
-  // (guests will be handled differently once ITER1-006 is done)
-  if (!session) {
-    redirect(`/auth/login?redirect=/rooms/${code}`);
-  }
 
   await connectToDatabase();
-  const doc = await RoomModel.findOne({ code })
-    .populate("participants", "_id fname lname")
-    .populate("categories")
-    .lean();
+  const doc = await RoomModel.findOne({ code }).populate("categories").lean();
   if (!doc) {
+    notFound();
+  }
+
+  const session = await getSession();
+  let currentParticipantId: string | null = null;
+
+  if (session) {
+    // For logged-in users, find their participantId from the room's participants
+    const participant = doc.participants.find(
+      (p: any) => p.userId?.toString() === session.userData._id,
+    );
+    if (participant) {
+      currentParticipantId = participant._id.toString();
+    }
+  } else {
+    // If not logged in, check if they are a guest participant in this room
+    const guestParticipantId = await getGuestParticipantId(code);
+    if (guestParticipantId) {
+      // Verify that this guest participant actually exists in this room
+      const participant = doc.participants.find(
+        (p: any) => p._id.toString() === guestParticipantId,
+      );
+      if (participant) {
+        currentParticipantId = participant._id.toString();
+      }
+    }
+  }
+
+  // If they are neither a registered participant nor a guest participant of this room, 404
+  if (!currentParticipantId) {
     notFound();
   }
 
   // Serialise ObjectIds / Dates to plain strings for the client component
   const room = JSON.parse(JSON.stringify(doc));
 
-  const currentUserId = session.userData._id;
-
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
-      <LobbyView initialRoom={room} currentUserId={currentUserId} />
+      <LobbyView
+        initialRoom={room}
+        currentParticipantId={currentParticipantId}
+      />
     </main>
   );
 }

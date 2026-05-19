@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { TRANSPORTATION_MODES } from "@/database";
+import { TRANSPORTATION_MODES } from "@/lib/constants";
 
 export const roomSchema = Joi.object({
   name: Joi.string().trim().min(3).max(50).required().messages({
