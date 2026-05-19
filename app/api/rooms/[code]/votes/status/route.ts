@@ -6,7 +6,7 @@ import { getSession } from "@/lib/session";
 
 export const GET = apiHandler( async (
     req: NextRequest,
-    { params }: { params: { code: String } }
+    { params }: { params: { code: string } }
 ) => {
     const roomCode = params.code;
 

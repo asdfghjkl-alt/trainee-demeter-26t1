@@ -6,7 +6,7 @@ import { getSession } from "@/lib/session";
 
 export const POST = apiHandler(async (
     req: NextRequest,
-    { params }: { params: { code: String } }
+    { params }: { params: { code: string } }
 ) => {
     const body = await req.json();
     let { participantId, rankings } = body;
