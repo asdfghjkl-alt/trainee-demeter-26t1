@@ -9,11 +9,11 @@ import toast from "react-hot-toast";
 
 interface Props {
   room: Room;
-  currentUserId: string;
-  onVotingClosed?: () => void; 
+  currentParticipantId: string;
+  onVotingClosed?: () => void;
 }
 
-export default function VotingView({ room, currentUserId, onVotingClosed }: Props) {
+export default function VotingView({ room, currentParticipantId, onVotingClosed }: Props) {
 
   // ─── State ───────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosingVote, setIsClosingVote] = useState(false);
 
-  const isAdmin = room.adminUser === currentUserId;
+  const isAdmin = room.participants.find((p) => p._id === currentParticipantId)?.isAdmin === true;
 
   // ─── Drag and drop handlers ───────────────────────────────────────────
 
@@ -70,11 +70,12 @@ export default function VotingView({ room, currentUserId, onVotingClosed }: Prop
     setIsSubmitting(true);
 
     const payload: VotePayload = {
+      participantId: currentParticipantId,
       rankings: rankedLocations.map((l) => l._id!),
     };
 
     try {
-      await api.post(`/rooms/${room.code}/vote`, payload);
+      await api.post(`/rooms/${room.code}/votes`, payload);
       setHasVoted(true);
       toast.success("Your vote has been submitted!");
     } catch (error: any) {

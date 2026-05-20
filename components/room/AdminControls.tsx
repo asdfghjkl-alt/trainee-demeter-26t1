@@ -4,12 +4,14 @@ import { useState, useEffect } from "react";
 import type { Room, Category } from "@/types/room";
 import { Zap, Loader2 } from "lucide-react";
 import api from "@/lib/axios";
+import toast from "react-hot-toast";
 
 interface Props {
   room: Room;
+  onRoomUpdate: () => void;
 }
 
-export default function AdminControls({ room }: Props) {
+export default function AdminControls({ room, onRoomUpdate }: Props) {
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
@@ -33,9 +35,15 @@ export default function AdminControls({ room }: Props) {
   const handleStart = async () => {
     if (selectedCategories.length === 0) return;
     setIsStarting(true);
-    // TODO: wire up to POST /api/rooms/:code/generate-locations
-    console.log("Starting with category IDs:", selectedCategories);
-    setIsStarting(false);
+    try {
+      await api.put(`/rooms/${room.code}/voting`);
+      toast.success("Voting has started!");
+      onRoomUpdate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to start voting.");
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (

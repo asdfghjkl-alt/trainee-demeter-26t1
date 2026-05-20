@@ -61,7 +61,7 @@ export default async function RoomPage({ params }: Props) {
 
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
-      <RoomPageClient initialRoom={room} currentUserId={currentParticipantId} />
+      <RoomPageClient initialRoom={room} currentParticipantId={currentParticipantId} />
     </main>
   );
 }

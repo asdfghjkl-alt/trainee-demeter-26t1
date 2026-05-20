@@ -49,6 +49,7 @@ export interface Room {
 }
 
 export interface VotePayload {
+  participantId: string;
   rankings: string[]; // array of location _id strings
 }
 

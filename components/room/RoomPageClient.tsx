@@ -11,17 +11,17 @@ const POLL_INTERVAL_MS = 5000;
 
 interface Props {
   initialRoom: Room;
-  currentUserId: string;
+  currentParticipantId: string;
 }
 
-export default function RoomPageClient({ initialRoom, currentUserId }: Props) {
+export default function RoomPageClient({ initialRoom, currentParticipantId }: Props) {
   const [room, setRoom] = useState<Room>(initialRoom);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRoom = useCallback(async () => {
     try {
-      const data = await getRoom(initialRoom.code, currentUserId);
+      const data = await getRoom(initialRoom.code, currentParticipantId);
       if (!data) {
         setError("Room not found.");
         return;
@@ -32,7 +32,7 @@ export default function RoomPageClient({ initialRoom, currentUserId }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [initialRoom.code, currentUserId]);
+  }, [initialRoom.code, currentParticipantId]);
 
   useEffect(() => {
     fetchRoom();
@@ -62,14 +62,20 @@ export default function RoomPageClient({ initialRoom, currentUserId }: Props) {
   //   completed/closed  → results (ITER1-019, not yet built)
 
   if (room.status === "waiting") {
-    return <LobbyView initialRoom={room} currentParticipantId={currentUserId} />;
+    return (
+      <LobbyView
+        initialRoom={room}
+        currentParticipantId={currentParticipantId}
+        onRoomUpdate={setRoom}
+      />
+    );
   }
 
   if (room.status === "voting") {
     return (
       <VotingView
         room={room}
-        currentUserId={currentUserId}
+        currentParticipantId={currentParticipantId}
         onVotingClosed={fetchRoom}
       />
     );
