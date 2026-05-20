@@ -5,11 +5,18 @@ Find the fairest place to meet. Rendezvous calculates the best possible meeting 
 ## Tech Stack
 
 - **Frontend**: Next.js (App Router), React, Tailwind CSS v4, Lucide React
+- **Maps & Geolocation**: Mapbox GL JS (`mapbox-gl`), Mapbox Search Box API, Mapbox Directions API
 - **Backend**: Next.js API Routes, Node.js
 - **Database**: MongoDB (via Mongoose)
 - **Authentication**: JWT, bcrypt
 
----
+## Key Features
+
+- **Admin Location Search**: Interactive search box using the Mapbox Search Box API with suggestion listing and full details retrieval. Uses session token grouping and debouncing to keep API consumption well within the Mapbox free tier.
+- **Multi-Modal Street Routing**: Uses the Mapbox Directions API to fetch street-level travel distances and times for participants. Supported profiles: driving, walking, cycling, and public transit (via a road network proxy).
+- **Persistent Interactive Map**: Persistently shows proposed venues and user location. Clicking location cards or pins draws the active road route path dynamically.
+- **Real-Time GPS Tracking**: Places a pulsing blue dot representing the user's current GPS location on the voting map, automatically fitting bounds to show all candidates relative to the user.
+- **Interactive Drag-and-Drop Voting**: Rank options dynamically by dragging candidate cards in real time before submitting votes.
 
 ## Setup Instructions
 
