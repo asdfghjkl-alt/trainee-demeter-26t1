@@ -109,28 +109,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     }
   };
 
-  // Request user current location on load (if permission already granted, it registers gpsCoords quietly)
-  useEffect(() => {
-    if (typeof window !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setGpsCoords({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          // If the participant has no stored suburb coordinates, default useLiveGPS to true!
-          if (!currentParticipant?.latitude || !currentParticipant?.longitude) {
-            setUseLiveGPS(true);
-          }
-        },
-        (error) => {
-          console.warn("Geolocation permission denied or error:", error);
-        },
-        { enableHighAccuracy: true }
-      );
-    }
-  }, [currentParticipant?.latitude, currentParticipant?.longitude]);
-
   // Request GPS permission and toggle it active
   const requestGPS = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
