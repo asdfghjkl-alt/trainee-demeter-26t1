@@ -12,6 +12,7 @@ interface Props {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
   onViewMap?: () => void;
+  routeDetails?: { distance: number; duration: number } | null;
 }
 
 export default function LocationCard({
@@ -24,6 +25,7 @@ export default function LocationCard({
   onDragOver,
   onDrop,
   onViewMap,
+  routeDetails,
 }: Props) {
   // Builds a link to view the location on OpenStreetMap
   const mapUrl = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}&zoom=15`;
@@ -35,6 +37,16 @@ export default function LocationCard({
       onViewMap();
     }
   };
+
+  // Helper to format distance and duration
+  const getDistanceString = () => {
+    if (!routeDetails) return null;
+    const km = routeDetails.distance / 1000;
+    const mins = Math.round(routeDetails.duration / 60);
+    return `${km.toFixed(1)} km (${mins} mins)`;
+  };
+  
+  const distanceStr = getDistanceString();
 
   return (
     <div
@@ -76,12 +88,19 @@ export default function LocationCard({
           {location.description}
         </p>
 
-        {/* Category name */}
-        {category && (
-          <span className="inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300">
-            {category.name}
-          </span>
-        )}
+        {/* Category name & Distance */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+          {category && (
+            <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300">
+              {category.name}
+            </span>
+          )}
+          {distanceStr && (
+            <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+              {distanceStr}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Map link */}
