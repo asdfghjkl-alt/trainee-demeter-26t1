@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 import connectToDatabase from "@/lib/mongodb";
-import { Room } from "@/database";
+import { Room, Vote } from "@/database";
 import { getSession } from "@/lib/session";
 
 export const GET = apiHandler(
@@ -50,11 +50,43 @@ export const GET = apiHandler(
       );
     }
 
-    const winnersList = room.winners || [];
-    const winningLocations = room.locations.filter((loc: any) =>
-      winnersList.some((winnerId: any) => winnerId.toString() === loc._id.toString())
-    );
+    // Calculate votes for all candidate locations dynamically to ensure consistency
+    const breakdown: Record<string, number> = {};
+    room.locations.forEach((loc: any) => {
+      breakdown[loc._id.toString()] = 0;
+    });
 
-    return NextResponse.json({ winners: winningLocations }, { status: 200 });
+    const votes = await Vote.find({ roomId: room._id });
+    votes.forEach((vote: any) => {
+      const firstPref = vote.rankings?.[0]?.toString();
+      if (firstPref && firstPref in breakdown) {
+        breakdown[firstPref] += 1;
+      }
+    });
+
+    // Sort locations by votes descending
+    const sortedLocations = [...room.locations].sort((a: any, b: any) => {
+      const votesA = breakdown[a._id.toString()] || 0;
+      const votesB = breakdown[b._id.toString()] || 0;
+      return votesB - votesA;
+    });
+
+    // Assign ranks (standard tournament ranking: 1, 2, 2, 4)
+    let currentRank = 1;
+    let prevVotes = -1;
+    const results = sortedLocations.map((loc: any, index: number) => {
+      const votesCount = breakdown[loc._id.toString()] || 0;
+      if (votesCount !== prevVotes) {
+        currentRank = index + 1;
+        prevVotes = votesCount;
+      }
+      return {
+        ...loc,
+        votes: votesCount,
+        rank: currentRank,
+      };
+    });
+
+    return NextResponse.json({ results }, { status: 200 });
   },
 );

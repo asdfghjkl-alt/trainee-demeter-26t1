@@ -588,14 +588,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
-  /rooms/{code}/winners:
+  /rooms/{code}/results:
     get:
-      operationId: getWinningLocations
+      operationId: getRoomResults
       tags:
         - Iteration 1
-        - Winner
-      summary: Get the winning location(s) for a room
-      description: Retrieves the list of winning location subdocuments (fully expanded) for a completed room.
+        - Result
+      summary: Get the voting results for all locations in a room
+      description: Retrieves the list of all location subdocuments, sorted by votes and containing their rank and total votes.
       parameters:
         - in: path
           name: code
@@ -613,16 +613,27 @@ paths:
           example: "6a0bcaaaac4f7ecd2232505d"
       responses:
         "200":
-          description: Winning locations retrieved successfully
+          description: Voting results retrieved successfully
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  winners:
+                  results:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Location"
+                      allOf:
+                        - $ref: "#/components/schemas/Location"
+                        - type: object
+                          properties:
+                            votes:
+                              type: integer
+                              description: Number of first-preference votes
+                              example: 3
+                            rank:
+                              type: integer
+                              description: Placement ranking of the location (1 is first place)
+                              example: 1
         "400":
           description: Voting has not completed yet
           content:
