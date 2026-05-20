@@ -16,6 +16,7 @@ export default function InputField<T extends FieldValues>({
   min,
   max,
   readOnly = false,
+  required = false,
 }: {
   label: string;
   name: Path<T>;
@@ -27,6 +28,7 @@ export default function InputField<T extends FieldValues>({
   min?: number;
   max?: number;
   readOnly?: boolean;
+  required?: boolean;
 }) {
   return (
     <div className={className}>
@@ -37,6 +39,7 @@ export default function InputField<T extends FieldValues>({
           htmlFor={name}
         >
           {label}
+          {required && <span className="text-red-500"> *</span>}
         </label>
 
         {/* Input field */}
