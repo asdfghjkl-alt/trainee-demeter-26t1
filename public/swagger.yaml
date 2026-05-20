@@ -377,7 +377,7 @@ paths:
                   type: string
                   description: Optional personal preferences or notes
                   example: "Needs wheelchair accessibility"
-                 transportationMode:
+                transportationMode:
                   type: string
                   description: Mode of transit
                   enum: [transit, driving, cycling, walking]
