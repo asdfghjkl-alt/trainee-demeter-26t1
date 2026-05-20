@@ -36,7 +36,7 @@ export default function AdminControls({ room, onRoomUpdate }: Props) {
     if (selectedCategories.length === 0) return;
     setIsStarting(true);
     try {
-      await api.put(`/rooms/${room.code}/voting`);
+      await api.put(`/rooms/${room.code}/status/voting`);
       toast.success("Voting has started!");
       onRoomUpdate();
     } catch (err: any) {

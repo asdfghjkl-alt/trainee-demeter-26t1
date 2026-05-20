@@ -212,8 +212,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
   const handleCloseVoting = async () => {
     setIsClosingVote(true);
     try {
-      // TODO: stup rn, need to wire up to POST /api/rooms/:code/close-voting
-      await api.post(`/rooms/${room.code}/close`);
+      await api.put(`/rooms/${room.code}/status/completed`);
       toast.success("Voting closed!");
       onVotingClosed?.();
     } catch {
