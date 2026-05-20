@@ -56,9 +56,20 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // Update map marker and center when selectedLocation changes
+  // Update map marker and center when selectedLocation changes, and clean up correctly
   useEffect(() => {
-    if (!selectedLocation || !mapContainerRef.current) return;
+    if (!selectedLocation || !mapContainerRef.current) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+      setMapReady(false);
+      return;
+    }
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!token) {
@@ -67,43 +78,36 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
     }
     mapboxgl.accessToken = token;
 
-    if (!mapRef.current) {
-      setMapReady(false);
-      const map = new mapboxgl.Map({
-        container: mapContainerRef.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: [selectedLocation.longitude, selectedLocation.latitude],
-        zoom: 14,
-      });
-      mapRef.current = map;
+    setMapReady(false);
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [selectedLocation.longitude, selectedLocation.latitude],
+      zoom: 14,
+    });
+    mapRef.current = map;
 
-      const marker = new mapboxgl.Marker({ color: "#06b6d4" })
-        .setLngLat([selectedLocation.longitude, selectedLocation.latitude])
-        .addTo(map);
-      markerRef.current = marker;
+    const marker = new mapboxgl.Marker({ color: "#06b6d4" })
+      .setLngLat([selectedLocation.longitude, selectedLocation.latitude])
+      .addTo(map);
+    markerRef.current = marker;
 
-      map.on("load", () => {
-        setMapReady(true);
-      });
-    } else {
-      mapRef.current.flyTo({
-        center: [selectedLocation.longitude, selectedLocation.latitude],
-        zoom: 14,
-        essential: true,
-      });
-      markerRef.current?.setLngLat([selectedLocation.longitude, selectedLocation.latitude]);
-    }
-  }, [selectedLocation]);
+    map.on("load", () => {
+      map.resize();
+      setMapReady(true);
+    });
 
-  // Clean up map when component unmounts
-  useEffect(() => {
     return () => {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [selectedLocation]);
 
   // Search input change handler with simple debounce/fetch
   const handleSearch = useCallback(async (query: string) => {

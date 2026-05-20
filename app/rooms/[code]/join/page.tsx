@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import PreferencesForm from "@/components/join/PreferencesForm";
 import { getSession } from "@/lib/session";
-import { pruneGuestParticipants, getGuestParticipantId } from "@/lib/guest";
+import { getGuestParticipantId } from "@/lib/guest";
 import connectToDatabase from "@/lib/mongodb";
 import { Room } from "@/database";
 
@@ -11,9 +11,6 @@ interface Props {
 
 export default async function JoinPage({ params }: Props) {
   const { code } = await params;
-
-  // Lazily clean up stale guest room entries from the cookie
-  await pruneGuestParticipants();
 
   // Verify the room exists and is still accepting participants
   await connectToDatabase();

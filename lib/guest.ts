@@ -68,6 +68,8 @@ export async function setGuestParticipant(
       JSON.stringify(updated),
       cookieOptions(),
     );
+    // Lazily clean up stale guest room entries
+    await pruneGuestParticipants();
   } catch (error) {
     console.error("Failed to set guest participant cookie:", error);
   }
@@ -88,6 +90,8 @@ export async function clearGuestParticipant(roomCode: string): Promise<void> {
     } else {
       cookieStore.set(GUEST_COOKIE_NAME, JSON.stringify(rest), cookieOptions());
     }
+    // Lazily clean up stale guest room entries
+    await pruneGuestParticipants();
   } catch (error) {
     console.error("Failed to clear guest participant cookie:", error);
   }
