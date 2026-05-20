@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import connectToDatabase from "@/lib/mongodb";
 import { Vote, Room } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
-import { getSession } from "@/lib/session";
 
 export const GET = apiHandler(
-  async (req: NextRequest, { params }: { params: { code: string } }) => {
-    const roomCode = params.code;
+  async (
+    req: NextRequest,
+    { params }: { params: Promise<{ code: string }> },
+  ) => {
+    const { code } = await params;
+    const roomCode = code;
 
     await connectToDatabase();
 

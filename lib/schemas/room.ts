@@ -65,4 +65,8 @@ export const addLocationSchema = Joi.object({
     "string.max": "Location name must be at most 100 characters long",
     "any.required": "Location name is required",
   }),
+  latitude: Joi.number().optional(),
+  longitude: Joi.number().optional(),
+  description: Joi.string().trim().allow("").optional(),
+  category: Joi.string().trim().allow("").optional(),
 });

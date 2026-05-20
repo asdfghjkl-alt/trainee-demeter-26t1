@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { getRoom } from "@/lib/rooms";
 import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
+import AdminLocationManager from "./AdminLocationManager";
+import { getRoom } from "@/lib/rooms";
+import { useState, useEffect, useCallback } from "react";
 import { Users, Calendar } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
@@ -13,14 +14,21 @@ const POLL_INTERVAL_MS = 5000; // 5 seconds
 interface Props {
   initialRoom: Room;
   currentParticipantId: string;
+  onRoomUpdate?: (room: Room) => void;
 }
 
 export default function LobbyView({
   initialRoom,
   currentParticipantId,
+  onRoomUpdate,
 }: Props) {
   const [room, setRoom] = useState<Room>(initialRoom);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync state when initialRoom from parent changes
+  useEffect(() => {
+    setRoom(initialRoom);
+  }, [initialRoom]);
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -30,10 +38,11 @@ export default function LobbyView({
         return;
       }
       setRoom(data);
+      onRoomUpdate?.(data);
     } catch {
       setError("Failed to load room.");
     }
-  }, [initialRoom.code, currentParticipantId]);
+  }, [initialRoom.code, currentParticipantId, onRoomUpdate]);
 
   // Poll for updates every POLL_INTERVAL_MS
   useEffect(() => {
@@ -109,7 +118,10 @@ export default function LobbyView({
 
       {/* Admin vs participant view */}
       {isAdmin ? (
-        <AdminControls room={room} />
+        <div className="space-y-8">
+          <AdminLocationManager room={room} onRoomUpdate={fetchRoom} />
+          <AdminControls room={room} onRoomUpdate={fetchRoom} />
+        </div>
       ) : (
         <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
           <p className="font-medium">Waiting for the admin to start voting…</p>

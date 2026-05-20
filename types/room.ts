@@ -18,6 +18,7 @@ export interface Location {
   latitude: number;
   longitude: number;     
   addedByAdmin?: boolean;
+  category?: string;
 }
 
 export interface Participant {
@@ -45,4 +46,15 @@ export interface Room {
   date?: string;
   description?: string;
   createdAt: string;
+}
+
+export interface VotePayload {
+  participantId: string;
+  rankings: string[]; // array of location _id strings
+}
+
+export interface VoteStatus {
+  hasVoted: boolean;       
+  totalVotes: number;     
+  totalParticipants: number;
 }

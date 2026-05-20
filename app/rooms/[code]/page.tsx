@@ -1,7 +1,7 @@
 import { getSession } from "@/lib/session";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
-import LobbyView from "@/components/room/LobbyView";
+import RoomPageClient from "@/components/room/RoomPageClient";
 import connectToDatabase from "@/lib/mongodb";
 import { Room } from "@/database";
 import { getGuestParticipantId } from "@/lib/guest";
@@ -61,10 +61,7 @@ export default async function RoomPage({ params }: Props) {
 
   return (
     <main className="flex-1 w-full bg-white dark:bg-[#0a0a0a]">
-      <LobbyView
-        initialRoom={room}
-        currentParticipantId={currentParticipantId}
-      />
+      <RoomPageClient initialRoom={room} currentParticipantId={currentParticipantId} />
     </main>
   );
 }
