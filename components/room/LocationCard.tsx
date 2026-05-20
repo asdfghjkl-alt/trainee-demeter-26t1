@@ -55,7 +55,7 @@ export default function LocationCard({
     const mins = Math.round(routeDetails.duration / 60);
     return `${km.toFixed(1)} km ${isTransit ? "walk " : ""}(${mins} mins)`;
   };
-  
+
   const distanceStr = getDistanceString();
 
   return (
@@ -86,9 +86,8 @@ export default function LocationCard({
               if (onMoveUp) onMoveUp();
             }}
             disabled={isFirst}
-            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-              isFirst ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
-            }`}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isFirst ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+              }`}
             title="Move Up"
             type="button"
           >
@@ -101,9 +100,8 @@ export default function LocationCard({
               if (onMoveDown) onMoveDown();
             }}
             disabled={isLast}
-            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
-              isLast ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
-            }`}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isLast ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+              }`}
             title="Move Down"
             type="button"
           >
