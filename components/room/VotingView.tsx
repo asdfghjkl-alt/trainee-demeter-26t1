@@ -28,6 +28,24 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
   const [hasVoted, setHasVoted] = useState(false);
 
+  useEffect(() => {
+    const checkHasVoted = async () => {
+      try {
+        const res = await api.get(`/rooms/${room.code}/votes`, {
+          params: { participantId: currentParticipantId },
+        });
+        if (res.data?.hasVoted) {
+          setHasVoted(true);
+        }
+      } catch (err) {
+        console.error("Error checking voting status:", err);
+      }
+    };
+    if (room.code && currentParticipantId) {
+      checkHasVoted();
+    }
+  }, [room.code, currentParticipantId]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosingVote, setIsClosingVote] = useState(false);
 

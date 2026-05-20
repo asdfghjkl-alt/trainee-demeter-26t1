@@ -61,3 +61,29 @@ export const POST = apiHandler(
     return NextResponse.json({ status: 200 });
   },
 );
+
+export const GET = apiHandler(
+  async (
+    req: NextRequest,
+    { params }: { params: Promise<{ code: string }> },
+  ) => {
+    const { code } = await params;
+    const { searchParams } = new URL(req.url);
+    const participantId = searchParams.get("participantId");
+
+    if (!participantId) {
+      return NextResponse.json({ message: "Missing participantId" }, { status: 400 });
+    }
+
+    await connectToDatabase();
+
+    const room = await Room.findOne({ code });
+    if (!room) {
+      return NextResponse.json({ message: "Room not found" }, { status: 404 });
+    }
+
+    const vote = await Vote.findOne({ roomId: room._id, participantId });
+
+    return NextResponse.json({ hasVoted: !!vote }, { status: 200 });
+  },
+);
