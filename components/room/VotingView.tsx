@@ -442,6 +442,19 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     showLocationDetails(location);
   };
 
+  const handleMoveLocation = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= rankedLocations.length) return;
+
+    setRankedLocations((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated;
+    });
+  };
+
   const isAdmin = room.participants.find((p) => p._id === currentParticipantId)?.isAdmin === true;
 
   // ─── Drag and drop handlers ───────────────────────────────────────────
@@ -628,6 +641,10 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                         onDrop={handleDrop}
                         onViewMap={() => handleFlyTo(location)}
                         routeDetails={routeDistances[location._id!]}
+                        onMoveUp={() => handleMoveLocation(index, "up")}
+                        onMoveDown={() => handleMoveLocation(index, "down")}
+                        isFirst={index === 0}
+                        isLast={index === rankedLocations.length - 1}
                       />
                     );
                   })}
