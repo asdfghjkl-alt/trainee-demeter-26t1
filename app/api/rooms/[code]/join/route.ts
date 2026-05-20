@@ -82,6 +82,29 @@ export const POST = apiHandler(
       }
     }
 
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (token && value.location) {
+      try {
+        const searchText = encodeURIComponent(value.location);
+        const geoResponse = await fetch(
+          `https://api.mapbox.com/search/geocode/v6/forward?q=${searchText}&country=au&limit=1&access_token=${token}`
+        );
+        if (geoResponse.ok) {
+          const geoData = await geoResponse.json();
+          if (geoData.features && geoData.features.length > 0) {
+            const feat = geoData.features[0];
+            longitude = feat.geometry.coordinates[0];
+            latitude = feat.geometry.coordinates[1];
+          }
+        }
+      } catch (err) {
+        console.error("Failed to geocode participant location:", err);
+      }
+    }
+
     const participant: IParticipant = {
       userId: isGuest
         ? null
@@ -94,6 +117,8 @@ export const POST = apiHandler(
       transportationMode: value.transportationMode,
       isGuest,
       isAdmin: !isGuest && room.adminUser.toString() === session!.userData._id,
+      latitude,
+      longitude,
     };
 
     room.participants.push(participant);

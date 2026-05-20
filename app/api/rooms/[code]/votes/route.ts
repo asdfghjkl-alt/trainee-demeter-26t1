@@ -25,6 +25,14 @@ export const POST = apiHandler(
       return NextResponse.json({ message: "Room not found" }, { status: 404 });
     }
 
+    // Check if the room is currently in voting status
+    if (room.status !== "voting") {
+      return NextResponse.json(
+        { message: "Voting is not currently active for this room" },
+        { status: 400 }
+      );
+    }
+
     // Validate that all ranked location IDs exist in the room's locations
     const roomLocationIds = new Set(
       room.locations.map((loc: any) => loc._id.toString()),

@@ -1,5 +1,5 @@
 // components/room/LocationCard.tsx
-import { GripVertical, ExternalLink } from "lucide-react";
+import { GripVertical, ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
 import type { Location, Category } from "@/types/room";
 
 interface Props {
@@ -13,6 +13,11 @@ interface Props {
   onDrop: () => void;
   onViewMap?: () => void;
   routeDetails?: { distance: number; duration: number } | null;
+  isTransit?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 export default function LocationCard({
@@ -26,6 +31,11 @@ export default function LocationCard({
   onDrop,
   onViewMap,
   routeDetails,
+  isTransit = false,
+  onMoveUp,
+  onMoveDown,
+  isFirst = false,
+  isLast = false,
 }: Props) {
   // Builds a link to view the location on OpenStreetMap
   const mapUrl = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}&zoom=15`;
@@ -43,9 +53,9 @@ export default function LocationCard({
     if (!routeDetails) return null;
     const km = routeDetails.distance / 1000;
     const mins = Math.round(routeDetails.duration / 60);
-    return `${km.toFixed(1)} km (${mins} mins)`;
+    return `${km.toFixed(1)} km ${isTransit ? "walk " : ""}(${mins} mins)`;
   };
-  
+
   const distanceStr = getDistanceString();
 
   return (
@@ -65,8 +75,40 @@ export default function LocationCard({
             : "border-gray-200 dark:border-gray-800 hover:border-cyan-300 dark:hover:border-cyan-700"
         }`}
     >
-      {/* Drag handle icon */}
-      <GripVertical className="w-5 h-5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+      {/* Drag handle & Mobile Reorder buttons */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <GripVertical className="hidden sm:block w-5 h-5 text-gray-300 dark:text-gray-600 cursor-grab" />
+        <div className="flex flex-col gap-0.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (onMoveUp) onMoveUp();
+            }}
+            disabled={isFirst}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isFirst ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+              }`}
+            title="Move Up"
+            type="button"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              if (onMoveDown) onMoveDown();
+            }}
+            disabled={isLast}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isLast ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+              }`}
+            title="Move Down"
+            type="button"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Rank badge */}
       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-600 text-white text-sm font-bold flex items-center justify-center">

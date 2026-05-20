@@ -32,6 +32,8 @@ export interface Participant {
   transportationMode: TransportationMode;
   isGuest: boolean;
   isAdmin: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Room {

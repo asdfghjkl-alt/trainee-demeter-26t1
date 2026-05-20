@@ -21,6 +21,8 @@ export interface IParticipant {
   isGuest: boolean;
   isAdmin: boolean;
   joinedAt?: Date;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface IRoom extends Document {
@@ -61,6 +63,8 @@ const participantSchema = new Schema<IParticipant>(
     isGuest: { type: Boolean, default: false },
     isAdmin: { type: Boolean, default: false },
     joinedAt: { type: Date, default: Date.now },
+    latitude: { type: Number },
+    longitude: { type: Number },
   },
   { _id: true },
 );

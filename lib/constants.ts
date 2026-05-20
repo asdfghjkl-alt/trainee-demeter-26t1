@@ -2,9 +2,7 @@
 // Do NOT import mongoose or any server-only modules here.
 
 export const TRANSPORTATION_MODES = [
-  "bus",
-  "train",
-  "metro",
+  "transit",
   "driving",
   "cycling",
   "walking",

@@ -254,9 +254,9 @@ export default function CreateRoomForm({
           {/* Date + Category side-by-side on sm+ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <InputField
-              label="Date"
+              label="Meeting Date & Time"
               name="date"
-              type="date"
+              type="datetime-local"
               placeholder=""
               register={register}
               error={errors.date}

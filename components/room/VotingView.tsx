@@ -1,27 +1,23 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
 import LocationCard from "./LocationCard";
-import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus } from "lucide-react";
+import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw } from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const transportIcons: Record<TransportationMode, React.ReactNode> = {
-  bus: <Bus className="w-3.5 h-3.5" />,
-  train: <Train className="w-3.5 h-3.5" />,
-  metro: <Train className="w-3.5 h-3.5" />,
+  transit: <Train className="w-3.5 h-3.5" />,
   driving: <Car className="w-3.5 h-3.5" />,
   cycling: <Bike className="w-3.5 h-3.5" />,
   walking: <PersonStanding className="w-3.5 h-3.5" />,
 };
 
 const transportLabels: Record<TransportationMode, string> = {
-  bus: "Bus",
-  train: "Train",
-  metro: "Metro",
+  transit: "Transit",
   driving: "Driving",
   cycling: "Cycling",
   walking: "Walking",
@@ -64,11 +60,33 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     }
   }, [room.code, currentParticipantId]);
 
+  useEffect(() => {
+    setRankedLocations(room.locations);
+  }, [room.locations]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosingVote, setIsClosingVote] = useState(false);
 
-  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [useLiveGPS, setUseLiveGPS] = useState(false);
+
+  const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
+
+  // Active origin coordinates (use live GPS if toggled & active, otherwise fall back to geocoded joined suburb)
+  const activeOrigin = useMemo(() => {
+    return useLiveGPS && gpsCoords
+      ? gpsCoords
+      : (currentParticipant?.latitude && currentParticipant?.longitude
+        ? { latitude: currentParticipant.latitude, longitude: currentParticipant.longitude }
+        : gpsCoords); // fallback to GPS if no suburb coordinates
+  }, [useLiveGPS, gpsCoords, currentParticipant?.latitude, currentParticipant?.longitude]);
+
+  // Serialized locations key to prevent duplicate route queries when unrelated room updates happen
+  const locationsKey = room.locations.map((l) => `${l._id}-${l.latitude}-${l.longitude}`).join(",");
+
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const prevOriginRef = useRef<string | null>(null);
+  const prevLocationsCountRef = useRef<number>(0);
 
   interface RouteDetails {
     distance: number;
@@ -84,37 +102,42 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       case "cycling":
         return "cycling";
       case "driving":
-      case "bus":
-      case "train":
-      case "metro":
+      case "transit":
       default:
         return "driving";
     }
   };
 
-  const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
-
-  // Request user current location (if granted)
-  useEffect(() => {
+  // Request GPS permission and toggle it active
+  const requestGPS = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserCoords({
+          const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-          });
+          };
+          setGpsCoords(coords);
+          setUseLiveGPS(true);
+          toast.success("Connected to live GPS!");
         },
         (error) => {
           console.warn("Geolocation permission denied or error:", error);
+          toast.error("Could not access GPS. Please check browser permissions.");
         },
         { enableHighAccuracy: true }
       );
+    } else {
+      toast.error("Geolocation is not supported by your browser.");
     }
-  }, []);
+  };
 
-  // Fetch travel routes and distances from Mapbox Directions API
+  // Fetch travel routes and distances from Mapbox/TfNSW APIs using activeOrigin (in parallel)
   useEffect(() => {
-    if (!userCoords || room.locations.length === 0) return;
+    if (!activeOrigin || room.locations.length === 0) {
+      setRouteDistances({});
+      return;
+    }
 
     const fetchRoutes = async () => {
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -123,29 +146,54 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       const profile = mapToMapboxProfile(currentParticipant?.transportationMode);
       const newDistances: { [id: string]: RouteDetails } = {};
 
-      for (const loc of room.locations) {
+      const promises = room.locations.map(async (loc) => {
         try {
-          const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${userCoords.longitude},${userCoords.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
+          const isTransit = currentParticipant?.transportationMode === "transit";
+          const url = isTransit
+            ? `/api/routes/transit?originLat=${activeOrigin.latitude}&originLng=${activeOrigin.longitude}&destLat=${loc.latitude}&destLng=${loc.longitude}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
+            : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${activeOrigin.longitude},${activeOrigin.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
+
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
-            if (data.routes?.[0]) {
-              newDistances[loc._id!] = {
-                distance: data.routes[0].distance,
-                duration: data.routes[0].duration,
-                geometry: data.routes[0].geometry,
+            if (isTransit) {
+              return {
+                id: loc._id!,
+                details: {
+                  distance: data.distance,
+                  duration: data.duration,
+                  geometry: data.geometry,
+                },
+              };
+            } else if (data.routes?.[0]) {
+              return {
+                id: loc._id!,
+                details: {
+                  distance: data.routes[0].distance,
+                  duration: data.routes[0].duration,
+                  geometry: data.routes[0].geometry,
+                },
               };
             }
           }
         } catch (err) {
-          console.error("Error fetching Mapbox Directions route:", err);
+          console.error("Error fetching route:", err);
         }
-      }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      results.forEach((res) => {
+        if (res) {
+          newDistances[res.id] = res.details;
+        }
+      });
+
       setRouteDistances(newDistances);
     };
 
     fetchRoutes();
-  }, [userCoords, room.locations, currentParticipant?.transportationMode]);
+  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode, room.date]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
@@ -170,7 +218,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       center: [151.2093, -33.8688], // default Sydney
       zoom: 12,
     });
-    setMapInstance(map);
+
+    map.on("load", () => {
+      map.resize();
+      setMapInstance(map);
+    });
 
     return () => {
       if (activePopupRef.current) {
@@ -183,11 +235,18 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       map.remove();
       setMapInstance(null);
     };
-  }, [room.locations]);
+  }, []);
 
-  // Fit map bounds to include all locations and user current location (if granted)
+  // Fit map bounds to include all locations and user starting location (runs once on load or when structurally changed)
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+
+    const originKey = activeOrigin ? `${activeOrigin.latitude},${activeOrigin.longitude}` : null;
+    const locationsCount = room.locations.length;
+
+    // Only run fitBounds if the map is freshly loaded, or if the origin or locations count actually changed
+    const hasChanged = originKey !== prevOriginRef.current || locationsCount !== prevLocationsCountRef.current;
+    if (!hasChanged) return;
 
     const bounds = new mapboxgl.LngLatBounds();
     let hasCoords = false;
@@ -197,25 +256,29 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       hasCoords = true;
     });
 
-    if (userCoords) {
-      bounds.extend([userCoords.longitude, userCoords.latitude]);
+    if (activeOrigin) {
+      bounds.extend([activeOrigin.longitude, activeOrigin.latitude]);
       hasCoords = true;
     }
 
     if (hasCoords) {
-      mapInstance.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 1200 });
+      mapInstance.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 0 });
+      prevOriginRef.current = originKey;
+      prevLocationsCountRef.current = locationsCount;
     }
-  }, [mapInstance, room.locations, userCoords]);
+  }, [mapInstance, room.locations, activeOrigin]);
 
   // Show details of a location on the map using a popup, travel distance/duration details, and focus center
   const showLocationDetails = (location: Location) => {
+    console.log("showLocationDetails called for:", location.name, "mapInstance is present:", !!mapInstance);
     setSelectedMapLocationId(location._id || null);
 
-    if (mapInstance) {
-      mapInstance.flyTo({
+    if (mapInstance && mapInstance.getCanvasContainer && mapInstance.getCanvasContainer()) {
+      console.log("Executing easeTo for:", location.name);
+      mapInstance.easeTo({
         center: [location.longitude, location.latitude],
         zoom: 15,
-        essential: true,
+        duration: 400,
       });
 
       if (activePopupRef.current) {
@@ -224,18 +287,23 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
       // Find route details
       const route = routeDistances[location._id!];
-      
+
+      const isTransit = currentParticipant?.transportationMode === "transit";
       const popupHtml = `
         <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
           ${route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km</span>
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : ""}
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `}
         </div>
       `;
 
@@ -245,56 +313,110 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         .addTo(mapInstance);
 
       activePopupRef.current = popup;
-
-      // Draw route path on the map
-      if (route?.geometry) {
-        if (mapInstance.getSource("route")) {
-          (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
-            type: "Feature",
-            properties: {},
-            geometry: route.geometry,
-          });
-        } else {
-          mapInstance.addSource("route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: route.geometry,
-            },
-          });
-
-          mapInstance.addLayer({
-            id: "route",
-            type: "line",
-            source: "route",
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#3b82f6", // tailwind blue-500
-              "line-width": 5,
-              "line-opacity": 0.75,
-            },
-          });
-        }
-      } else {
-        // Clear route path
-        if (mapInstance.getSource("route")) {
-          (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
-            type: "Feature",
-            properties: {},
-            geometry: { type: "LineString", coordinates: [] },
-          });
-        }
-      }
     }
   };
 
-  // Sync labeled markers with rankedLocations ordering & selectedMapLocationId
+  // Sync map route and popup details when routeDistances changes for the selected location
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !selectedMapLocationId) return;
+    const location = room.locations.find((l) => l._id === selectedMapLocationId);
+    if (!location) return;
+
+    const route = routeDistances[selectedMapLocationId];
+
+    const isTransit = currentParticipant?.transportationMode === "transit";
+    // Update active popup content dynamically if it is open
+    if (activePopupRef.current && activePopupRef.current.isOpen()) {
+      const popupHtml = `
+        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+          <p class="font-bold mb-0.5">${location.name}</p>
+          ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
+          ${route ? `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${Math.round(route.duration / 60)} mins</span>
+            </div>
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `}
+        </div>
+      `;
+      activePopupRef.current.setHTML(popupHtml);
+    }
+
+    // Update route geometry on map
+    if (route?.geometry) {
+      const geojson = route.geometry.type === "FeatureCollection"
+        ? route.geometry
+        : {
+          type: "Feature" as const,
+          properties: {},
+          geometry: route.geometry,
+        };
+
+      if (mapInstance.getSource("route")) {
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        mapInstance.addSource("route", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        mapInstance.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", "#3b82f6", // blue
+              "train", "#f97316", // orange
+              "bus", "#eab308", // yellow
+              "metro", "#a855f7", // purple
+              "ferry", "#06b6d4", // cyan
+              "tram", "#ef4444", // red
+              "#3b82f6", // default fallback
+            ] as any,
+            "line-width": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", 3,
+              "train", 6,
+              "bus", 5,
+              "metro", 6,
+              "ferry", 5,
+              "tram", 5,
+              5,
+            ] as any,
+            "line-opacity": 0.85,
+          },
+        });
+      }
+    } else {
+      // Clear route path
+      if (mapInstance.getSource("route")) {
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
+          type: "FeatureCollection",
+          features: [],
+        });
+      }
+    }
+  }, [mapInstance, selectedMapLocationId, routeDistances, room.locations]);
+
+  const showLocationDetailsRef = useRef(showLocationDetails);
+  showLocationDetailsRef.current = showLocationDetails;
+
+  // Sync labeled markers with rankedLocations ordering & activeOrigin (DOM nodes only created/destroyed when list changes)
+  useEffect(() => {
+    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
 
     // Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
@@ -303,56 +425,102 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     // Render new markers
     rankedLocations.forEach((location, idx) => {
       const rank = idx + 1;
-      const isSelected = location._id === selectedMapLocationId;
       const el = document.createElement("div");
 
-      el.className = isSelected
-        ? "flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border-2 border-white dark:border-gray-900 shadow-2xl scale-110 z-50 ring-4 ring-amber-300 dark:ring-amber-900/50 transition-all duration-150 whitespace-nowrap cursor-pointer"
-        : "flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-cyan-500 transition-all duration-150 whitespace-nowrap";
+      // Custom inner wrapper to keep Mapbox's classes intact on the outer container
+      const inner = document.createElement("div");
+      inner.className = "marker-inner flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-cyan-500 transition-all duration-150 whitespace-nowrap pointer-events-auto";
+      inner.setAttribute("data-rank", rank.toString());
 
-      el.innerHTML = `
-        <span class="w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0">${rank}</span>
+      inner.innerHTML = `
+        <span class="w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0 rank-span">${rank}</span>
         <span class="max-w-[120px] truncate">${location.name}</span>
       `;
-
-      el.addEventListener("click", () => {
-        showLocationDetails(location);
-      });
+      el.appendChild(inner);
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([location.longitude, location.latitude])
         .addTo(mapInstance);
 
+      const handleInteraction = (e: Event) => {
+        console.log(`Marker interaction [${e.type}] triggered for:`, location.name);
+        e.stopPropagation();
+        showLocationDetailsRef.current(location);
+      };
+
+      inner.addEventListener("click", handleInteraction);
+      inner.addEventListener("mousedown", handleInteraction);
+      inner.addEventListener("touchstart", handleInteraction);
+
       markersRef.current[location._id!] = marker;
     });
 
-    // Render user marker
+    // Render user/origin marker
     if (userMarkerRef.current) {
       userMarkerRef.current.remove();
       userMarkerRef.current = null;
     }
-    if (userCoords) {
+    if (activeOrigin) {
       const el = document.createElement("div");
       el.className = "relative flex items-center justify-center w-6 h-6 z-[60]";
       el.innerHTML = `
-        <span class="absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75 animate-ping"></span>
-        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-600 border border-white shadow-md"></span>
+        <span class="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping"></span>
+        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-600 border border-white shadow-md"></span>
       `;
 
       const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([userCoords.longitude, userCoords.latitude])
+        .setLngLat([activeOrigin.longitude, activeOrigin.latitude])
         .addTo(mapInstance);
 
+      const originLabel = useLiveGPS ? "Your GPS Location" : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`;
       const popup = new mapboxgl.Popup({ offset: 10, closeButton: false })
-        .setHTML(`<div class="p-1 text-[10px] font-bold text-gray-700 dark:text-gray-300">You are here</div>`);
+        .setHTML(`<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${originLabel}</div>`);
 
       marker.setPopup(popup);
       userMarkerRef.current = marker;
     }
-  }, [mapInstance, rankedLocations, selectedMapLocationId, userCoords, routeDistances]);
+  }, [mapInstance, rankedLocations, activeOrigin]);
+
+  // Update marker selection classes in place without destroying/recreating DOM elements
+  useEffect(() => {
+    Object.entries(markersRef.current).forEach(([id, marker]) => {
+      const el = marker.getElement();
+      const inner = el.querySelector(".marker-inner") as HTMLDivElement | null;
+      if (!inner) return;
+
+      const isSelected = id === selectedMapLocationId;
+      const rank = inner.getAttribute("data-rank") || "1";
+
+      inner.className = isSelected
+        ? "marker-inner flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border-2 border-white dark:border-gray-900 shadow-2xl scale-110 z-50 ring-4 ring-amber-300 dark:ring-amber-900/50 transition-all duration-150 whitespace-nowrap cursor-pointer pointer-events-auto"
+        : "marker-inner flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-cyan-500 transition-all duration-150 whitespace-nowrap pointer-events-auto";
+
+      const rankSpan = inner.querySelector(".rank-span");
+      if (rankSpan) {
+        if (isSelected) {
+          rankSpan.className = "w-4 h-4 flex items-center justify-center rounded-full bg-white text-amber-600 text-[10px] font-extrabold shrink-0 rank-span";
+        } else {
+          rankSpan.className = "w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0 rank-span";
+        }
+      }
+    });
+  }, [selectedMapLocationId]);
 
   const handleFlyTo = (location: Location) => {
     showLocationDetails(location);
+  };
+
+  const handleMoveLocation = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= rankedLocations.length) return;
+
+    setRankedLocations((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = temp;
+      return updated;
+    });
   };
 
   const isAdmin = room.participants.find((p) => p._id === currentParticipantId)?.isAdmin === true;
@@ -460,6 +628,63 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                 </span>
               </p>
 
+              {/* Starting location selection card */}
+              <div className="flex flex-col gap-2 p-3.5 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Starting Location
+                  </span>
+                  {currentParticipant?.latitude && currentParticipant?.longitude ? (
+                    <button
+                      onClick={() => {
+                        if (useLiveGPS) {
+                          setUseLiveGPS(false);
+                        } else if (gpsCoords) {
+                          setUseLiveGPS(true);
+                        } else {
+                          requestGPS();
+                        }
+                      }}
+                      className="text-xs text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Switch to {useLiveGPS ? "Suburb" : "Live GPS"}
+                    </button>
+                  ) : !gpsCoords ? (
+                    <button
+                      onClick={requestGPS}
+                      className="text-xs text-cyan-600 hover:text-cyan-500 dark:text-cyan-400 dark:hover:text-cyan-300 font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Connect Live GPS
+                    </button>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-950 dark:text-gray-50">
+                  {useLiveGPS ? (
+                    <div className="flex items-center gap-2 font-medium">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-450 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                      </span>
+                      <span>Live GPS Coordinates</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 font-medium">
+                      <MapPin className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                      <span className="truncate max-w-[240px]">
+                        {currentParticipant?.location || "No suburb selected"}
+                      </span>
+                      {(!currentParticipant?.latitude || !currentParticipant?.longitude) && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium shrink-0">
+                          (un-geocoded)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Draggable list */}
               {rankedLocations.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-8 text-center text-gray-400">
@@ -484,6 +709,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                         onDrop={handleDrop}
                         onViewMap={() => handleFlyTo(location)}
                         routeDetails={routeDistances[location._id!]}
+                        isTransit={currentParticipant?.transportationMode === "transit"}
+                        onMoveUp={() => handleMoveLocation(index, "up")}
+                        onMoveDown={() => handleMoveLocation(index, "down")}
+                        isFirst={index === 0}
+                        isLast={index === rankedLocations.length - 1}
                       />
                     );
                   })}
@@ -533,6 +763,39 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
             </div>
             <div className="relative h-[400px] lg:h-[600px] w-full bg-gray-100 dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
               <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+              {/* Transit Legend Overlay */}
+              {currentParticipant?.transportationMode === "transit" && (
+                <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-10 text-[10px] space-y-2 pointer-events-none select-none max-w-[150px]">
+                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">Transit Legend</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#a855f7]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Metro</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#f97316]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Train</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#eab308]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bus</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#06b6d4]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Ferry</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#ef4444]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-0.5 border-t border-dashed border-[#3b82f6] bg-transparent" style={{ borderTopWidth: '2px', borderTopStyle: 'dashed' }} />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -546,12 +809,29 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
 // The room name + voting status header
 function VotingHeader({ room, currentParticipant }: { room: Room; currentParticipant?: Participant }) {
-  const isTransit = currentParticipant && ["bus", "train", "metro"].includes(currentParticipant.transportationMode);
+  const formattedDate = useMemo(() => {
+    if (!room.date) return null;
+    try {
+      const d = new Date(room.date);
+      if (isNaN(d.getTime())) return null;
+      return new Intl.DateTimeFormat("en-AU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(d);
+    } catch {
+      return null;
+    }
+  }, [room.date]);
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">
       <div className="space-y-1">
         <h1 className="text-gray-900 dark:text-white">{room.name}</h1>
+        {formattedDate && (
+          <p className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+            Scheduled for: {formattedDate}
+          </p>
+        )}
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Voting is open — rank your preferred locations below.
         </p>
@@ -565,11 +845,6 @@ function VotingHeader({ room, currentParticipant }: { room: Room; currentPartici
               {transportLabels[currentParticipant.transportationMode]}
             </span>
           </div>
-          {isTransit && (
-            <span className="text-[9px] text-gray-400 dark:text-gray-500 text-right max-w-[180px] leading-tight">
-              * Routing calculated using road networks
-            </span>
-          )}
         </div>
       )}
     </div>
