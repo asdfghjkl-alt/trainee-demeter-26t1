@@ -283,7 +283,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       console.log("Executing easeTo for:", location.name);
       mapInstance.easeTo({
         center: [location.longitude, location.latitude],
-        zoom: 15,
         duration: 400,
       });
 
