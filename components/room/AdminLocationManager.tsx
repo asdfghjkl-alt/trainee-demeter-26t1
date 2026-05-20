@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { Search, MapPin, Plus, Loader2, RefreshCw } from "lucide-react";
+import { Search, MapPin, Plus, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -220,6 +220,23 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
     }
   };
 
+  // Delete a location added by the admin
+  const handleDeleteLocation = async (locationId: string) => {
+    if (!confirm("Are you sure you want to delete this location?")) return;
+    setUpdatingLocationId(locationId);
+    try {
+      await api.delete(`/rooms/${room.code}/locations`, {
+        params: { locationId },
+      });
+      toast.success("Location deleted successfully!");
+      onRoomUpdate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete location.");
+    } finally {
+      setUpdatingLocationId(null);
+    }
+  };
+
   const adminAddedLocations = room.locations.filter((loc) => loc.addedByAdmin);
 
   return (
@@ -403,6 +420,15 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
                       </option>
                     ))}
                   </select>
+
+                  <button
+                    onClick={() => handleDeleteLocation(loc._id!)}
+                    disabled={updatingLocationId === loc._id}
+                    title="Delete location"
+                    className="p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
