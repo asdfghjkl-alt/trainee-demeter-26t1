@@ -809,8 +809,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
 // The room name + voting status header
 function VotingHeader({ room, currentParticipant }: { room: Room; currentParticipant?: Participant }) {
-  const isTransit = currentParticipant && currentParticipant.transportationMode === "transit";
-
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">
       <div className="space-y-1">
@@ -828,11 +826,6 @@ function VotingHeader({ room, currentParticipant }: { room: Room; currentPartici
               {transportLabels[currentParticipant.transportationMode]}
             </span>
           </div>
-          {isTransit && (
-            <span className="text-[9px] text-gray-400 dark:text-gray-500 text-right max-w-[180px] leading-tight">
-              * Routing calculated using road networks
-            </span>
-          )}
         </div>
       )}
     </div>
