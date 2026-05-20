@@ -39,7 +39,7 @@ results screen shown to every participant once a room transitions to
 - **Ties**: side-by-side equal cards with explicit "It's a tie!" headline.
 - **Breakdown**: full ranked list always visible, each row with a horizontal
   vote-percentage bar.
-- **Extras**: confetti burst on first paint, "Back to home" CTA at the bottom.
+- **Extras**: "Back to home" CTA at the bottom.
 
 ## File Plan
 
@@ -47,7 +47,7 @@ results screen shown to every participant once a room transitions to
 
 - `components/room/ResultsView.tsx`
   Top-level results component. Fetches results on mount, renders header +
-  podium + breakdown + back-to-home + map. Manages confetti trigger.
+  podium + breakdown + back-to-home + map.
 
 - `components/room/ResultPodium.tsx`
   Hero podium. Two render modes:
@@ -78,17 +78,12 @@ results screen shown to every participant once a room transitions to
 - `components/room/index.ts`
   Export the three new components.
 
-- `package.json`
-  Add `canvas-confetti` (+ `@types/canvas-confetti`). ~3kb gzipped, no deps,
-  used only on results view.
-
 ## Component Details
 
 ### `ResultsView`
 
 - State: `results`, `loading`, `error`.
-- `useEffect` on mount: calls `getResults`. On success, fires confetti once
-  (idempotent via ref guard so re-renders don't repeat).
+- `useEffect` on mount: calls `getResults`.
 - Layout:
   - Header: room name, "Results are in!" subtitle, scheduled-date chip,
     direction chip (mirrors `VotingHeader` pattern, can be a small local
@@ -148,7 +143,7 @@ Props: `{ results: LocationResult[] }`.
   `votes: 0`. API still returns them sorted by `_id` (well, original order)
   with all `rank: 1`. We'll treat that as a "no winner determined" state:
   podium shows a muted "No votes were cast" card; breakdown lists everyone
-  with empty bars. Confetti is suppressed in this case.
+  with empty bars.
 - **API 400 race** (status change between gate-check and fetch): show error
   message and a retry button.
 - **Maps URL with missing lat/lng**: shouldn't happen — locations are
@@ -181,6 +176,6 @@ Manual verification:
 ## Out of Scope
 
 - A shared `<RoomMap>` extraction across voting + results views.
-- Animations beyond the confetti burst.
+- Animations / confetti.
 - Re-vote / new-room CTAs beyond a plain "Back to home" link.
 - Real-time updates (results are immutable post-close).
