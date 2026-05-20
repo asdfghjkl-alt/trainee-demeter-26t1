@@ -377,7 +377,7 @@ paths:
                   type: string
                   description: Optional personal preferences or notes
                   example: "Needs wheelchair accessibility"
-                 transportationMode:
+                transportationMode:
                   type: string
                   description: Mode of transit
                   enum: [transit, driving, cycling, walking]
@@ -581,6 +581,71 @@ paths:
                   numVotes:
                     type: integer
                     example: 5
+        "404":
+          description: Room not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /rooms/{code}/results:
+    get:
+      operationId: getRoomResults
+      tags:
+        - Iteration 1
+        - Result
+      summary: Get the voting results for all locations in a room
+      description: Retrieves the list of all location subdocuments, sorted by votes and containing their rank and total votes.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+        - in: query
+          name: participantId
+          required: false
+          schema:
+            type: string
+          description: Participant ID to authorize guest users
+          example: "6a0bcaaaac4f7ecd2232505d"
+      responses:
+        "200":
+          description: Voting results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Location"
+                        - type: object
+                          properties:
+                            votes:
+                              type: integer
+                              description: Number of first-preference votes
+                              example: 3
+                            rank:
+                              type: integer
+                              description: Placement ranking of the location (1 is first place)
+                              example: 1
+        "400":
+          description: Voting has not completed yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized to access this room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "404":
           description: Room not found
           content:

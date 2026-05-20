@@ -6,3 +6,4 @@ export { default as ShareRoomCard } from "./ShareRoomCard";
 export { default as AdminControls } from "./AdminControls";
 export { default as RoomPageClient } from "./RoomPageClient";
 export { default as AdminLocationManager } from "./AdminLocationManager";
+export { default as CreateRoomForm } from "./CreateRoomForm";

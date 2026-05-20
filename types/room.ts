@@ -48,6 +48,8 @@ export interface Room {
   date?: string;
   meetingDirection?: "to-venue" | "from-venue";
   description?: string;
+  winners?: string[];
+  voteBreakdown?: Record<string, number>;
   createdAt: string;
 }
 
