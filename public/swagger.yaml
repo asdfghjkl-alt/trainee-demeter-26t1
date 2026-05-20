@@ -377,11 +377,11 @@ paths:
                   type: string
                   description: Optional personal preferences or notes
                   example: "Needs wheelchair accessibility"
-                transportationMode:
+                 transportationMode:
                   type: string
                   description: Mode of transit
-                  enum: [bus, train, metro, driving, cycling, walking]
-                  example: "walking"
+                  enum: [transit, driving, cycling, walking]
+                  example: "transit"
       responses:
         "201":
           description: Successfully joined the room
@@ -778,8 +778,8 @@ components:
         transportationMode:
           type: string
           description: "Chosen mode of transit"
-          enum: [bus, train, metro, driving, cycling, walking]
-          example: "train"
+          enum: [transit, driving, cycling, walking]
+          example: "transit"
         isGuest:
           type: boolean
           description: "Whether the participant is a guest user"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
 import LocationCard from "./LocationCard";
 import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw } from "lucide-react";
@@ -10,18 +10,14 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const transportIcons: Record<TransportationMode, React.ReactNode> = {
-  bus: <Bus className="w-3.5 h-3.5" />,
-  train: <Train className="w-3.5 h-3.5" />,
-  metro: <Train className="w-3.5 h-3.5" />,
+  transit: <Train className="w-3.5 h-3.5" />,
   driving: <Car className="w-3.5 h-3.5" />,
   cycling: <Bike className="w-3.5 h-3.5" />,
   walking: <PersonStanding className="w-3.5 h-3.5" />,
 };
 
 const transportLabels: Record<TransportationMode, string> = {
-  bus: "Bus",
-  train: "Train",
-  metro: "Metro",
+  transit: "Transit",
   driving: "Driving",
   cycling: "Cycling",
   walking: "Walking",
@@ -77,11 +73,16 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
   const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
 
   // Active origin coordinates (use live GPS if toggled & active, otherwise fall back to geocoded joined suburb)
-  const activeOrigin = useLiveGPS && gpsCoords
-    ? gpsCoords
-    : (currentParticipant?.latitude && currentParticipant?.longitude
-      ? { latitude: currentParticipant.latitude, longitude: currentParticipant.longitude }
-      : gpsCoords); // fallback to GPS if no suburb coordinates
+  const activeOrigin = useMemo(() => {
+    return useLiveGPS && gpsCoords
+      ? gpsCoords
+      : (currentParticipant?.latitude && currentParticipant?.longitude
+        ? { latitude: currentParticipant.latitude, longitude: currentParticipant.longitude }
+        : gpsCoords); // fallback to GPS if no suburb coordinates
+  }, [useLiveGPS, gpsCoords, currentParticipant?.latitude, currentParticipant?.longitude]);
+
+  // Serialized locations key to prevent duplicate route queries when unrelated room updates happen
+  const locationsKey = room.locations.map((l) => `${l._id}-${l.latitude}-${l.longitude}`).join(",");
 
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const prevOriginRef = useRef<string | null>(null);
@@ -101,9 +102,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       case "cycling":
         return "cycling";
       case "driving":
-      case "bus":
-      case "train":
-      case "metro":
+      case "transit":
       default:
         return "driving";
     }
@@ -133,7 +132,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     }
   };
 
-  // Fetch travel routes and distances from Mapbox Directions API using activeOrigin (in parallel)
+  // Fetch travel routes and distances from Mapbox/TfNSW APIs using activeOrigin (in parallel)
   useEffect(() => {
     if (!activeOrigin || room.locations.length === 0) {
       setRouteDistances({});
@@ -149,11 +148,24 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
       const promises = room.locations.map(async (loc) => {
         try {
-          const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${activeOrigin.longitude},${activeOrigin.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
+          const isTransit = currentParticipant?.transportationMode === "transit";
+          const url = isTransit
+            ? `/api/routes/transit?originLat=${activeOrigin.latitude}&originLng=${activeOrigin.longitude}&destLat=${loc.latitude}&destLng=${loc.longitude}`
+            : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${activeOrigin.longitude},${activeOrigin.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
+
           const res = await fetch(url);
           if (res.ok) {
             const data = await res.json();
-            if (data.routes?.[0]) {
+            if (isTransit) {
+              return {
+                id: loc._id!,
+                details: {
+                  distance: data.distance,
+                  duration: data.duration,
+                  geometry: data.geometry,
+                },
+              };
+            } else if (data.routes?.[0]) {
               return {
                 id: loc._id!,
                 details: {
@@ -165,7 +177,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
             }
           }
         } catch (err) {
-          console.error("Error fetching Mapbox Directions route:", err);
+          console.error("Error fetching route:", err);
         }
         return null;
       });
@@ -181,7 +193,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     };
 
     fetchRoutes();
-  }, [activeOrigin, room.locations, currentParticipant?.transportationMode]);
+  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
@@ -276,17 +288,22 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       // Find route details
       const route = routeDistances[location._id!];
 
+      const isTransit = currentParticipant?.transportationMode === "transit";
       const popupHtml = `
         <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
           ${route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km</span>
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : ""}
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `}
         </div>
       `;
 
@@ -296,52 +313,103 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         .addTo(mapInstance);
 
       activePopupRef.current = popup;
-
-      // Draw route path on the map
-      if (route?.geometry) {
-        if (mapInstance.getSource("route")) {
-          (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
-            type: "Feature",
-            properties: {},
-            geometry: route.geometry,
-          });
-        } else {
-          mapInstance.addSource("route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: route.geometry,
-            },
-          });
-
-          mapInstance.addLayer({
-            id: "route",
-            type: "line",
-            source: "route",
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#3b82f6", // tailwind blue-500
-              "line-width": 5,
-              "line-opacity": 0.75,
-            },
-          });
-        }
-      } else {
-        // Clear route path
-        if (mapInstance.getSource("route")) {
-          (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
-            type: "Feature",
-            properties: {},
-            geometry: { type: "LineString", coordinates: [] },
-          });
-        }
-      }
     }
   };
+
+  // Sync map route and popup details when routeDistances changes for the selected location
+  useEffect(() => {
+    if (!mapInstance || !selectedMapLocationId) return;
+    const location = room.locations.find((l) => l._id === selectedMapLocationId);
+    if (!location) return;
+
+    const route = routeDistances[selectedMapLocationId];
+
+    const isTransit = currentParticipant?.transportationMode === "transit";
+    // Update active popup content dynamically if it is open
+    if (activePopupRef.current && activePopupRef.current.isOpen()) {
+      const popupHtml = `
+        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+          <p class="font-bold mb-0.5">${location.name}</p>
+          ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
+          ${route ? `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${Math.round(route.duration / 60)} mins</span>
+            </div>
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `}
+        </div>
+      `;
+      activePopupRef.current.setHTML(popupHtml);
+    }
+
+    // Update route geometry on map
+    if (route?.geometry) {
+      const geojson = route.geometry.type === "FeatureCollection"
+        ? route.geometry
+        : {
+          type: "Feature" as const,
+          properties: {},
+          geometry: route.geometry,
+        };
+
+      if (mapInstance.getSource("route")) {
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson);
+      } else {
+        mapInstance.addSource("route", {
+          type: "geojson",
+          data: geojson,
+        });
+
+        mapInstance.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", "#3b82f6", // blue
+              "train", "#f97316", // orange
+              "bus", "#eab308", // yellow
+              "metro", "#a855f7", // purple
+              "ferry", "#06b6d4", // cyan
+              "tram", "#ef4444", // red
+              "#3b82f6", // default fallback
+            ] as any,
+            "line-width": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", 3,
+              "train", 6,
+              "bus", 5,
+              "metro", 6,
+              "ferry", 5,
+              "tram", 5,
+              5,
+            ] as any,
+            "line-opacity": 0.85,
+          },
+        });
+      }
+    } else {
+      // Clear route path
+      if (mapInstance.getSource("route")) {
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
+          type: "FeatureCollection",
+          features: [],
+        });
+      }
+    }
+  }, [mapInstance, selectedMapLocationId, routeDistances, room.locations]);
 
   const showLocationDetailsRef = useRef(showLocationDetails);
   showLocationDetailsRef.current = showLocationDetails;
@@ -641,6 +709,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                         onDrop={handleDrop}
                         onViewMap={() => handleFlyTo(location)}
                         routeDetails={routeDistances[location._id!]}
+                        isTransit={currentParticipant?.transportationMode === "transit"}
                         onMoveUp={() => handleMoveLocation(index, "up")}
                         onMoveDown={() => handleMoveLocation(index, "down")}
                         isFirst={index === 0}
@@ -707,7 +776,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
 // The room name + voting status header
 function VotingHeader({ room, currentParticipant }: { room: Room; currentParticipant?: Participant }) {
-  const isTransit = currentParticipant && ["bus", "train", "metro"].includes(currentParticipant.transportationMode);
+  const isTransit = currentParticipant && currentParticipant.transportationMode === "transit";
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">

@@ -13,6 +13,7 @@ interface Props {
   onDrop: () => void;
   onViewMap?: () => void;
   routeDetails?: { distance: number; duration: number } | null;
+  isTransit?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   isFirst?: boolean;
@@ -30,6 +31,7 @@ export default function LocationCard({
   onDrop,
   onViewMap,
   routeDetails,
+  isTransit = false,
   onMoveUp,
   onMoveDown,
   isFirst = false,
@@ -51,7 +53,7 @@ export default function LocationCard({
     if (!routeDetails) return null;
     const km = routeDetails.distance / 1000;
     const mins = Math.round(routeDetails.duration / 60);
-    return `${km.toFixed(1)} km (${mins} mins)`;
+    return `${km.toFixed(1)} km ${isTransit ? "walk " : ""}(${mins} mins)`;
   };
   
   const distanceStr = getDistanceString();

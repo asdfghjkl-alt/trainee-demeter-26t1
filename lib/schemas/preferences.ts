@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { TRANSPORTATION_MODES } from "@/lib/constants";
 
 export const preferencesSchema = Joi.object({
   name: Joi.string().trim().min(2).max(80).required().messages({
@@ -37,11 +38,11 @@ export const preferencesSchema = Joi.object({
   }),
 
   transportationMode: Joi.string()
-    .valid("bus", "train", "metro", "driving", "cycling", "walking")
+    .valid(...TRANSPORTATION_MODES)
     .required()
     .messages({
       "any.only":
-        "Transportation mode must be one of: Bus, Train, Metro, Driving, Cycling, Walking",
+        "Transportation mode must be one of: Transit, Driving, Cycling, Walking",
       "any.required": "Please select a transportation mode",
       "string.empty": "Please select a transportation mode",
     }),

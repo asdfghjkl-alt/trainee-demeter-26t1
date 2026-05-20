@@ -3,18 +3,14 @@ import type { Participant, TransportationMode } from "@/types/room";
 import { Car, Train, PersonStanding, Bike, Crown, User, UserRound, Bus } from "lucide-react";
 
 const transportIcons: Record<TransportationMode, React.ReactNode> = {
-  bus: <Bus className="w-4 h-4" />,
-  train: <Train className="w-4 h-4" />,
-  metro: <Train className="w-4 h-4" />,
+  transit: <Train className="w-4 h-4" />,
   driving: <Car className="w-4 h-4" />,
   cycling: <Bike className="w-4 h-4" />,
   walking: <PersonStanding className="w-4 h-4" />,
 };
 
 const transportLabels: Record<TransportationMode, string> = {
-  bus: "Bus",
-  train: "Train",
-  metro: "Metro",
+  transit: "Transit",
   driving: "Driving",
   cycling: "Cycling",
   walking: "Walking",

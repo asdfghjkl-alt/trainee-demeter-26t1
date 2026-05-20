@@ -61,7 +61,7 @@ export const MOCK_ROOM: Room = {
       userId: "mock_user_admin",
       name: "Aidan",
       location: "Fitzroy",
-      transportationMode: "train",
+      transportationMode: "transit",
       isGuest: false,
       isAdmin: true,
     },
