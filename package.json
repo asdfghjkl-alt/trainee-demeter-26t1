@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@types/swagger-ui-react": "^5.18.0",
     "axios": "^1.16.0",
     "bcrypt": "^6.0.0",
     "joi": "^18.2.1",
@@ -21,7 +22,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.75.0",
-    "react-hot-toast": "^2.6.0"
+    "react-hot-toast": "^2.6.0",
+    "swagger-ui-react": "^5.32.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

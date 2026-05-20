@@ -2,9 +2,14 @@
 import api from "@/lib/axios";
 import type { Room } from "@/types/room";
 
-export async function getRoom(code: string): Promise<Room | null> {
+export async function getRoom(
+  code: string,
+  participantId?: string,
+): Promise<Room | null> {
   try {
-    const res = await api.get(`/rooms/${code}`);
+    const res = await api.get(`/rooms/${code}`, {
+      params: participantId ? { participantId } : undefined,
+    });
     return res.data.room;
   } catch {
     return null;
@@ -15,10 +20,10 @@ export async function getRoom(code: string): Promise<Room | null> {
 // Delete once GET /api/rooms/[code] is live
 export const MOCK_ROOM: Room = {
   _id: "mock123",
-  name: "TP Dinnor",    
+  name: "TP Dinnor",
   code: "ABC123",
-  adminUser: "mock_user_admin",   
-  status: "closed", // Change to open/closed               
+  adminUser: "mock_user_admin",
+  status: "waiting",
   categories: [
     { _id: "cat1", name: "Restaurants" },
     { _id: "cat2", name: "Bars" },
@@ -30,7 +35,7 @@ export const MOCK_ROOM: Room = {
       description: "7a/2 Huntley St, Alexandria NSW 2015",
       latitude: -33.9108,
       longitude: 151.1937,
-      category: "cat1", 
+      category: "cat1",
     },
     {
       _id: "loc2",
@@ -55,8 +60,8 @@ export const MOCK_ROOM: Room = {
       _id: "p1",
       userId: "mock_user_admin",
       name: "Aidan",
-      location: "Eastlakes",
-      transportationMode: "transit",
+      location: "Fitzroy",
+      transportationMode: "train",
       isGuest: false,
       isAdmin: true,
     },

@@ -1,9 +1,9 @@
-// types/room.ts
+import type { TransportationMode } from "@/lib/constants";
 
-export type TransportationMode = "driving" | "transit" | "walking" | "cycling";
+export type { TransportationMode };
 
 // Matches Edward's status enum exactly
-export type RoomStatus = "open" | "closed" | "ended";
+export type RoomStatus = "waiting" | "voting" | "completed" | "closed";
 
 // Matches Edward's Category schema
 export interface Category {
@@ -26,7 +26,8 @@ export interface Participant {
   userId?: string;
   name: string;
   location: string;
-  dietaryRequirements?: string;
+  dietaryRequirements?: string[];
+  dietaryNotes?: string;
   preferences?: string;
   transportationMode: TransportationMode;
   isGuest: boolean;
@@ -42,6 +43,8 @@ export interface Room {
   categories: Category[];      
   locations: Location[];
   status: RoomStatus;    
+  date?: string;
+  description?: string;
   createdAt: string;
 }
 

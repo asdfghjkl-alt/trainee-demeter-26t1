@@ -1,3 +1,4 @@
 export { registerSchema, loginSchema } from "./auth";
 export { categorySchema } from "./category";
-export { roomSchema } from "./room";
+export { roomSchema, addLocationSchema } from "./room";
+export { joinRoomSchema } from "./join";

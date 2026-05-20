@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { MOCK_ROOM } from "@/lib/rooms";
+import { getRoom } from "@/lib/rooms";
 import LobbyView from "./LobbyView";
 import VotingView from "./VotingView";
 import { Loader2 } from "lucide-react";
@@ -10,28 +10,29 @@ import { Loader2 } from "lucide-react";
 const POLL_INTERVAL_MS = 5000;
 
 interface Props {
-  code: string;
+  initialRoom: Room;
   currentUserId: string;
 }
 
-export default function RoomPageClient({ code, currentUserId }: Props) {
-  const [room, setRoom] = useState<Room | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function RoomPageClient({ initialRoom, currentUserId }: Props) {
+  const [room, setRoom] = useState<Room>(initialRoom);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRoom = useCallback(async () => {
     try {
-      // TODO: replace with real API call when Edward's route is ready
-      // const data = await getRoom(code);
-      const data = MOCK_ROOM;
-      if (!data) { setError("Room not found."); return; }
+      const data = await getRoom(initialRoom.code, currentUserId);
+      if (!data) {
+        setError("Room not found.");
+        return;
+      }
       setRoom(data);
     } catch {
       setError("Failed to load room.");
     } finally {
       setLoading(false);
     }
-  }, [code]);
+  }, [initialRoom.code, currentUserId]);
 
   useEffect(() => {
     fetchRoom();
@@ -56,15 +57,15 @@ export default function RoomPageClient({ code, currentUserId }: Props) {
   }
 
   // ── Route to the right view based on room status ──────────────────────
-  //   open   → lobby (waiting for participants)
-  //   closed → voting (locations generated, voting in progress)
-  //   ended  → results (ITER1-019, not yet built)
+  //   waiting           → lobby (waiting for participants)
+  //   voting            → voting (locations generated, voting in progress)
+  //   completed/closed  → results (ITER1-019, not yet built)
 
-  if (room.status === "open") {
-    return <LobbyView room={room} currentUserId={currentUserId} />;
+  if (room.status === "waiting") {
+    return <LobbyView initialRoom={room} currentParticipantId={currentUserId} />;
   }
 
-  if (room.status === "closed") {
+  if (room.status === "voting") {
     return (
       <VotingView
         room={room}
@@ -74,7 +75,7 @@ export default function RoomPageClient({ code, currentUserId }: Props) {
     );
   }
 
-  if (room.status === "ended") {
+  if (room.status === "completed" || room.status === "closed") {
     // ITER1-019 will build this, placeholder for nowwww
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
