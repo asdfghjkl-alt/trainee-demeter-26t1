@@ -11,6 +11,7 @@ import { TRANSPORTATION_MODES } from "@/lib/constants";
 type CreateRoomFormData = {
   name: string;
   date: string;
+  meetingDirection: "to-venue" | "from-venue";
   description: string;
   location: string;
   transportationMode: string;
@@ -41,6 +42,7 @@ export default function CreateRoomForm({
     defaultValues: {
       name: "",
       date: "",
+      meetingDirection: "to-venue",
       description: "",
       location: "",
       transportationMode: "",
@@ -86,6 +88,7 @@ export default function CreateRoomForm({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [detectedSuburb, setDetectedSuburb] = useState<string>("");
   const useCurrentLocation = watch("useCurrentLocation");
+  const meetingDirection = watch("meetingDirection");
 
   async function handleUseCurrentLocationChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -205,6 +208,7 @@ export default function CreateRoomForm({
         location: data.location.trim(),
         transportationMode: data.transportationMode,
         date: data.date ? new Date(data.date).toISOString() : undefined,
+        meetingDirection: data.meetingDirection,
         description: data.description.trim() || undefined,
         dietaryRequirements: data.dietaryRequirements,
         dietaryNotes: data.dietaryNotes,
@@ -221,7 +225,7 @@ export default function CreateRoomForm({
       console.error(error);
       setServerError(
         error.response?.data?.message ||
-          "Failed to create room. Please try again.",
+        "Failed to create room. Please try again.",
       );
       setIsCreating(false);
     }
@@ -253,14 +257,49 @@ export default function CreateRoomForm({
 
           {/* Date + Category side-by-side on sm+ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField
-              label="Meeting Date & Time"
-              name="date"
-              type="datetime-local"
-              placeholder=""
-              register={register}
-              error={errors.date}
-            />
+            <div>
+              <InputField
+                label="Meeting Date & Time"
+                name="date"
+                type="datetime-local"
+                placeholder=""
+                register={register}
+                error={errors.date}
+              />
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    today.setHours(12, 0, 0, 0);
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, "0");
+                    const day = String(today.getDate()).padStart(2, "0");
+                    const hours = String(today.getHours()).padStart(2, "0");
+                    const minutes = String(today.getMinutes()).padStart(2, "0");
+                    setValue("date", `${year}-${month}-${day}T${hours}:${minutes}`);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-150 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                >
+                  Today (Noon)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, "0");
+                    const day = String(now.getDate()).padStart(2, "0");
+                    const hours = String(now.getHours()).padStart(2, "0");
+                    const minutes = String(now.getMinutes()).padStart(2, "0");
+                    setValue("date", `${year}-${month}-${day}T${hours}:${minutes}`);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-900/30 transition-colors cursor-pointer"
+                >
+                  Current Time (Now)
+                </button>
+              </div>
+            </div>
 
             <div>
               <label
@@ -350,6 +389,54 @@ export default function CreateRoomForm({
             </div>
           </div>
 
+          {/* Travel Direction */}
+          <div>
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
+              Travel Direction
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label
+                className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 bg-white dark:bg-[#0a0a0a] ${meetingDirection === "to-venue"
+                    ? "border-cyan-500 shadow-sm shadow-cyan-500/10 dark:shadow-cyan-500/5"
+                    : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  value="to-venue"
+                  {...register("meetingDirection")}
+                  className="sr-only"
+                />
+                <span className="font-semibold text-gray-900 dark:text-white text-base">
+                  Commute to Venue
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Participants travel from their starting location to meet at the venue. Timetables and routes are calculated for arrival at the venue.
+                </span>
+              </label>
+
+              <label
+                className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 bg-white dark:bg-[#0a0a0a] ${meetingDirection === "from-venue"
+                    ? "border-cyan-500 shadow-sm shadow-cyan-500/10 dark:shadow-cyan-500/5"
+                    : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  value="from-venue"
+                  {...register("meetingDirection")}
+                  className="sr-only"
+                />
+                <span className="font-semibold text-gray-900 dark:text-white text-base">
+                  Travel Home from Venue
+                </span>
+                <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Participants meet at the venue and then travel back to their starting location. Timetables and routes are calculated for departure from the venue.
+                </span>
+              </label>
+            </div>
+          </div>
+
           {/* Description */}
           <div>
             <div className="mb-2 flex items-center justify-between">
@@ -365,11 +452,10 @@ export default function CreateRoomForm({
                 </span>
               </div>
               <span
-                className={`text-xs tabular-nums ${
-                  descriptionValue.length > DESCRIPTION_MAX
+                className={`text-xs tabular-nums ${descriptionValue.length > DESCRIPTION_MAX
                     ? "text-red-500"
                     : "text-gray-500 dark:text-gray-400"
-                }`}
+                  }`}
               >
                 {descriptionValue.length}/{DESCRIPTION_MAX}
               </span>
@@ -399,7 +485,9 @@ export default function CreateRoomForm({
           {/* Travel details section */}
           <div className="border-t border-gray-200 dark:border-gray-800 pt-5 mt-5">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              Your Travel Details (As First Participant)
+              {meetingDirection === "from-venue"
+                ? "Your Return Details (As First Participant)"
+                : "Your Travel Details (As First Participant)"}
             </h3>
 
             {/* Use Current Location Checkbox */}
@@ -430,13 +518,13 @@ export default function CreateRoomForm({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <InputField
-                label="Starting Location"
+                label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location"}
                 name="location"
                 placeholder={
                   useCurrentLocation && detectedSuburb
                     ? detectedSuburb
                     : useCurrentLocation
-                      ? "Detecting your location..."
+                      ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your starting location...")
                       : "e.g. Kensington"
                 }
                 register={register}

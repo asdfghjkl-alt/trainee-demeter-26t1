@@ -46,6 +46,7 @@ export interface Room {
   locations: Location[];
   status: RoomStatus;    
   date?: string;
+  meetingDirection?: "to-venue" | "from-venue";
   description?: string;
   createdAt: string;
 }

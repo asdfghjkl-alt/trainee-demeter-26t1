@@ -149,9 +149,15 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       const promises = room.locations.map(async (loc) => {
         try {
           const isTransit = currentParticipant?.transportationMode === "transit";
+          const isFromVenue = room.meetingDirection === "from-venue";
+          const startLat = isFromVenue ? loc.latitude : activeOrigin.latitude;
+          const startLng = isFromVenue ? loc.longitude : activeOrigin.longitude;
+          const endLat = isFromVenue ? activeOrigin.latitude : loc.latitude;
+          const endLng = isFromVenue ? activeOrigin.longitude : loc.longitude;
+
           const url = isTransit
-            ? `/api/routes/transit?originLat=${activeOrigin.latitude}&originLng=${activeOrigin.longitude}&destLat=${loc.latitude}&destLng=${loc.longitude}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
-            : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${activeOrigin.longitude},${activeOrigin.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
+            ? `/api/routes/transit?originLat=${startLat}&originLng=${startLng}&destLat=${endLat}&destLng=${endLng}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
+            : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?access_token=${token}&geometries=geojson`;
 
           const res = await fetch(url);
           if (res.ok) {
@@ -193,7 +199,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     };
 
     fetchRoutes();
-  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode, room.date]);
+  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode, room.date, room.meetingDirection]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
@@ -472,14 +478,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         .setLngLat([activeOrigin.longitude, activeOrigin.latitude])
         .addTo(mapInstance);
 
-      const originLabel = useLiveGPS ? "Your GPS Location" : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`;
+      const isFromVenue = room.meetingDirection === "from-venue";
+      const originLabel = useLiveGPS
+        ? (isFromVenue ? "Your Return GPS Location" : "Your GPS Location")
+        : (isFromVenue
+          ? `Your Return Suburb: ${currentParticipant?.location || "Destination"}`
+          : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`);
+
       const popup = new mapboxgl.Popup({ offset: 10, closeButton: false })
         .setHTML(`<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${originLabel}</div>`);
 
       marker.setPopup(popup);
       userMarkerRef.current = marker;
     }
-  }, [mapInstance, rankedLocations, activeOrigin]);
+  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection]);
 
   // Update marker selection classes in place without destroying/recreating DOM elements
   useEffect(() => {
@@ -632,7 +644,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
               <div className="flex flex-col gap-2 p-3.5 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Starting Location
+                    {room.meetingDirection === "from-venue" ? "Return Destination (Home)" : "Starting Location"}
                   </span>
                   {currentParticipant?.latitude && currentParticipant?.longitude ? (
                     <button
@@ -827,12 +839,18 @@ function VotingHeader({ room, currentParticipant }: { room: Room; currentPartici
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">
       <div className="space-y-1">
         <h1 className="text-gray-900 dark:text-white">{room.name}</h1>
-        {formattedDate && (
-          <p className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
-            Scheduled for: {formattedDate}
-          </p>
-        )}
-        <p className="text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {formattedDate && (
+            <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+              Scheduled for: {formattedDate}
+            </span>
+          )}
+          {formattedDate && <span className="hidden sm:inline text-gray-300 dark:text-gray-750">|</span>}
+          <span className="font-semibold text-blue-600 dark:text-blue-400">
+            {room.meetingDirection === "from-venue" ? "Direction: Travel Home from Venue" : "Direction: Commute to Venue"}
+          </span>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 pt-1">
           Voting is open — rank your preferred locations below.
         </p>
       </div>

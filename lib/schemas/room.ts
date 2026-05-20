@@ -52,6 +52,7 @@ export const roomSchema = Joi.object({
   date: Joi.date().iso().allow(null, "").optional().messages({
     "date.format": "Please enter a valid date",
   }),
+  meetingDirection: Joi.string().valid("to-venue", "from-venue").default("to-venue").optional(),
   description: Joi.string().trim().max(200).allow(null, "").optional().messages({
     "string.max": "Description must not exceed 200 characters",
   }),

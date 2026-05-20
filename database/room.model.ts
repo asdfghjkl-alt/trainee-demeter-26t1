@@ -34,6 +34,7 @@ export interface IRoom extends Document {
   locations: ILocation[];
   status: "waiting" | "voting" | "completed" | "closed";
   date?: Date;
+  meetingDirection?: "to-venue" | "from-venue";
   description?: string;
   createdAt: Date; // The time when the room was created
 }
@@ -82,6 +83,11 @@ const roomSchema = new Schema<IRoom>({
     default: "waiting",
   },
   date: { type: Date },
+  meetingDirection: {
+    type: String,
+    enum: ["to-venue", "from-venue"],
+    default: "to-venue"
+  },
   description: { type: String },
   createdAt: { type: Date, default: Date.now },
 });

@@ -41,9 +41,11 @@ export default async function JoinPage({ params }: Props) {
   // Autofill name from the session payload
   const user = session?.userData ? { name: session.userData.fname } : undefined;
 
+  const meetingDirection = room.meetingDirection || "to-venue";
+
   if (session) {
-    return <PreferencesForm code={code} user={user} />;
+    return <PreferencesForm code={code} user={user} meetingDirection={meetingDirection} />;
   }
 
-  return <PreferencesForm code={code} />;
+  return <PreferencesForm code={code} meetingDirection={meetingDirection} />;
 }
