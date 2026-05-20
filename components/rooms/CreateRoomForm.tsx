@@ -257,14 +257,49 @@ export default function CreateRoomForm({
 
           {/* Date + Category side-by-side on sm+ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField
-              label="Meeting Date & Time"
-              name="date"
-              type="datetime-local"
-              placeholder=""
-              register={register}
-              error={errors.date}
-            />
+            <div>
+              <InputField
+                label="Meeting Date & Time"
+                name="date"
+                type="datetime-local"
+                placeholder=""
+                register={register}
+                error={errors.date}
+              />
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = new Date();
+                    today.setHours(12, 0, 0, 0);
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, "0");
+                    const day = String(today.getDate()).padStart(2, "0");
+                    const hours = String(today.getHours()).padStart(2, "0");
+                    const minutes = String(today.getMinutes()).padStart(2, "0");
+                    setValue("date", `${year}-${month}-${day}T${hours}:${minutes}`);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-gray-150 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors cursor-pointer"
+                >
+                  Today (Noon)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = String(now.getMonth() + 1).padStart(2, "0");
+                    const day = String(now.getDate()).padStart(2, "0");
+                    const hours = String(now.getHours()).padStart(2, "0");
+                    const minutes = String(now.getMinutes()).padStart(2, "0");
+                    setValue("date", `${year}-${month}-${day}T${hours}:${minutes}`);
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-900/30 transition-colors cursor-pointer"
+                >
+                  Current Time (Now)
+                </button>
+              </div>
+            </div>
 
             <div>
               <label
