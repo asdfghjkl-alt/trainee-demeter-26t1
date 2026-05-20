@@ -801,7 +801,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                       <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3.5 h-0.5 border-t border-dashed border-[#3b82f6] bg-transparent" style={{ borderTopWidth: '2px', borderTopStyle: 'dashed' }} />
+                      <span className="w-3.5 h-1 rounded bg-[#3b82f6]" />
                       <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
                     </div>
                   </div>

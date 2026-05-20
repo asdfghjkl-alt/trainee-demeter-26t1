@@ -117,17 +117,30 @@ export const GET = apiHandler(async (req: NextRequest) => {
             if (!leg.transportation) {
               mode = "walking";
             } else {
-              const prodClass = leg.transportation.product?.class;
+              const prodClass = Number(leg.transportation.product?.class);
               const prodName = String(leg.transportation.product?.name || "").toLowerCase();
-              if (prodClass === 1 || prodClass === "1" || prodName.includes("metro")) {
+              // Mapping derived from observed TfNSW responses:
+              //   class 99 / 100, name "footpath" → walking
+              //   class 1  Sydney Trains Network / Regional Trains and Coaches Network → train
+              //   class 2  NSW TrainLink intercity → train
+              //   class 5  Sydney Buses Network → bus
+              //   class 7  Regional Coaches → bus
+              //   class 4  Light Rail → tram
+              //   class 9  Sydney Ferries → ferry
+              // Sydney Metro shares class 1 with Sydney Trains, so it's identified by name.
+              // Class is checked before name because the "Regional Trains and Coaches" name
+              // is shared by class 1 (train) and class 7 (coach).
+              if (prodName.includes("footpath") || prodClass === 99 || prodClass === 100) {
+                mode = "walking";
+              } else if (prodName.includes("metro")) {
                 mode = "metro";
-              } else if (prodClass === 2 || prodClass === "2" || prodName.includes("train") || prodName.includes("rail")) {
+              } else if (prodClass === 1 || prodClass === 2) {
                 mode = "train";
-              } else if (prodClass === 3 || prodClass === "3" || prodName.includes("bus")) {
+              } else if (prodClass === 5 || prodClass === 7) {
                 mode = "bus";
-              } else if (prodClass === 4 || prodClass === "4" || prodName.includes("ferry")) {
+              } else if (prodClass === 9 || prodName.includes("ferry")) {
                 mode = "ferry";
-              } else if (prodClass === 0 || prodClass === "0" || prodName.includes("tram") || prodName.includes("lightrail")) {
+              } else if (prodClass === 4 || prodName.includes("tram") || prodName.includes("light rail") || prodName.includes("lightrail")) {
                 mode = "tram";
               }
             }

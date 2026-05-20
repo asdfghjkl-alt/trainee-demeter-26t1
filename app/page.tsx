@@ -3,6 +3,7 @@ import { Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { PlusCircle, Users, MapPin, ArrowRight } from "lucide-react";
+import toast from "react-hot-toast";
 
 const HOW_IT_WORKS = [
   {
@@ -80,7 +81,38 @@ export default function Home() {
                 Create a meetup
               </button>
 
-              <form className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const code = joinCode.trim().toUpperCase();
+                  if (!code) return;
+                  try {
+                    const res = await fetch(`/api/rooms/${code}/exists`);
+                    if (res.status === 404) {
+                      toast.error("Invalid code");
+                      return;
+                    }
+                    if (!res.ok) {
+                      toast.error("Something went wrong. Please try again.");
+                      return;
+                    }
+                    const { status } = await res.json();
+                    if (status === "voting") {
+                      toast.error("Voting has already started for this room");
+                      return;
+                    }
+                    if (status === "completed" || status === "closed") {
+                      toast.error("This room has already finished");
+                      return;
+                    }
+                  } catch {
+                    toast.error("Something went wrong. Please try again.");
+                    return;
+                  }
+                  router.push(`/rooms/${code}/join`);
+                }}
+                className="flex rounded-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-2 py-2 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-transparent transition-all"
+              >
                 <input
                   name="code"
                   type="text"
@@ -91,11 +123,7 @@ export default function Home() {
                   required
                 />
                 <button
-                  type="button"
-                  onClick={() => {
-                    if (!joinCode.trim()) return;
-                    router.push(`/rooms/${joinCode.trim().toUpperCase()}/join`);
-                  }}
+                  type="submit"
                   className="flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 px-6 py-2 text-sm font-semibold text-gray-900 dark:text-white transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   Join

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Link from "next/link";
 import type { Room, LocationResult } from "@/types/room";
 import api from "@/lib/axios";
@@ -14,14 +14,30 @@ interface Props {
   currentParticipantId: string;
 }
 
+interface RouteDetails {
+  distance: number;
+  duration: number;
+  geometry?: GeoJSON.Geometry | GeoJSON.FeatureCollection;
+}
+
+function mapToMapboxProfile(mode?: string): string {
+  switch (mode) {
+    case "walking":
+      return "walking";
+    case "cycling":
+      return "cycling";
+    case "driving":
+    case "transit":
+    default:
+      return "driving";
+  }
+}
+
 export default function ResultsView({ room, currentParticipantId }: Props) {
+  // ─── Results fetch ─────────────────────────────────────────────────────
   const [results, setResults] = useState<LocationResult[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{ [id: string]: mapboxgl.Marker }>({});
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -46,7 +62,108 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     fetchResults();
   }, [room.code, currentParticipantId]);
 
-  // Initialize the Mapbox map once results have loaded so the container is mounted
+  // ─── Derived ───────────────────────────────────────────────────────────
+  const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
+  const isTransit = currentParticipant?.transportationMode === "transit";
+
+  const totalVotes = useMemo(
+    () => (results ?? []).reduce((sum, r) => sum + r.votes, 0),
+    [results],
+  );
+  const hasAnyVotes = totalVotes > 0;
+
+  const winners = useMemo(() => {
+    if (!results || !hasAnyVotes) return [];
+    return results.filter((r) => r.rank === 1);
+  }, [results, hasAnyVotes]);
+
+  // Stable key for winners so effects don't re-run on identity-only changes
+  const winnersKey = winners.map((w) => w._id).join(",");
+
+  const participantLat = currentParticipant?.latitude;
+  const participantLng = currentParticipant?.longitude;
+  const activeOrigin = useMemo(() => {
+    if (participantLat && participantLng) {
+      return { latitude: participantLat, longitude: participantLng };
+    }
+    return null;
+  }, [participantLat, participantLng]);
+
+  // ─── Route fetching for winners ────────────────────────────────────────
+  const [routeDistances, setRouteDistances] = useState<{ [id: string]: RouteDetails }>({});
+
+  useEffect(() => {
+    if (!activeOrigin || winners.length === 0) {
+      setRouteDistances({});
+      return;
+    }
+
+    const fetchRoutes = async () => {
+      const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+      if (!token) return;
+
+      const profile = mapToMapboxProfile(currentParticipant?.transportationMode);
+      const next: { [id: string]: RouteDetails } = {};
+
+      const promises = winners.map(async (loc) => {
+        try {
+          const isFromVenue = room.meetingDirection === "from-venue";
+          const startLat = isFromVenue ? loc.latitude : activeOrigin.latitude;
+          const startLng = isFromVenue ? loc.longitude : activeOrigin.longitude;
+          const endLat = isFromVenue ? activeOrigin.latitude : loc.latitude;
+          const endLng = isFromVenue ? activeOrigin.longitude : loc.longitude;
+
+          const url = isTransit
+            ? `/api/routes/transit?originLat=${startLat}&originLng=${startLng}&destLat=${endLat}&destLng=${endLng}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
+            : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?access_token=${token}&geometries=geojson`;
+
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const data = await res.json();
+          if (isTransit) {
+            return {
+              id: loc._id!,
+              details: {
+                distance: data.distance,
+                duration: data.duration,
+                geometry: data.geometry,
+              } satisfies RouteDetails,
+            };
+          } else if (data.routes?.[0]) {
+            return {
+              id: loc._id!,
+              details: {
+                distance: data.routes[0].distance,
+                duration: data.routes[0].duration,
+                geometry: data.routes[0].geometry,
+              } satisfies RouteDetails,
+            };
+          }
+        } catch (err) {
+          console.error("Error fetching winner route:", err);
+        }
+        return null;
+      });
+
+      const settled = await Promise.all(promises);
+      settled.forEach((s) => {
+        if (s) next[s.id] = s.details;
+      });
+      setRouteDistances(next);
+    };
+
+    fetchRoutes();
+  }, [activeOrigin, winnersKey, currentParticipant?.transportationMode, room.date, room.meetingDirection, isTransit]);
+
+  // ─── Map ───────────────────────────────────────────────────────────────
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
+  const markersRef = useRef<{ [id: string]: mapboxgl.Marker }>({});
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const activePopupRef = useRef<mapboxgl.Popup | null>(null);
+  const [selectedMapLocationId, setSelectedMapLocationId] = useState<string | null>(null);
+
+  // Init map once results are loaded so the container is mounted
   useEffect(() => {
     if (!mapContainerRef.current || !results) return;
 
@@ -70,47 +187,235 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     });
 
     return () => {
+      if (activePopupRef.current) {
+        activePopupRef.current.remove();
+        activePopupRef.current = null;
+      }
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
       map.remove();
       setMapInstance(null);
     };
   }, [results]);
 
-  // Render markers and fit bounds once both the map and results are ready
+  const showLocationDetails = useCallback(
+    (location: LocationResult) => {
+      setSelectedMapLocationId(location._id || null);
+      if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+
+      mapInstance.easeTo({
+        center: [location.longitude, location.latitude],
+        duration: 400,
+      });
+
+      if (activePopupRef.current) {
+        activePopupRef.current.remove();
+      }
+
+      const route = routeDistances[location._id!];
+      const popupHtml = `
+        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+          <p class="font-bold mb-0.5">${escapeHtml(location.name)}</p>
+          ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
+          ${activeOrigin ? (route ? `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${Math.round(route.duration / 60)} mins</span>
+            </div>
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `) : ""}
+        </div>
+      `;
+
+      const popup = new mapboxgl.Popup({ offset: 15, closeButton: false })
+        .setLngLat([location.longitude, location.latitude])
+        .setHTML(popupHtml)
+        .addTo(mapInstance);
+
+      activePopupRef.current = popup;
+    },
+    [mapInstance, routeDistances, activeOrigin, isTransit],
+  );
+
+  // Keep a ref so the marker click handler always sees the latest version
+  const showLocationDetailsRef = useRef(showLocationDetails);
   useEffect(() => {
-    if (!mapInstance || !results || results.length === 0) return;
+    showLocationDetailsRef.current = showLocationDetails;
+  }, [showLocationDetails]);
+
+  // Render winner markers (and user origin), fit bounds, and auto-select the
+  // single-winner case so the route is visible without clicking.
+  useEffect(() => {
+    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
 
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
 
     const bounds = new mapboxgl.LngLatBounds();
-    const anyVotes = results.some((r) => r.votes > 0);
+    let hasCoords = false;
 
-    results.forEach((loc) => {
-      const isWinner = anyVotes && loc.rank === 1;
+    winners.forEach((loc) => {
       const el = document.createElement("div");
       const inner = document.createElement("div");
-      inner.className = isWinner
-        ? "flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md whitespace-nowrap"
-        : "flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md whitespace-nowrap";
-
-      const badge = isWinner
-        ? `<span class="w-4 h-4 flex items-center justify-center text-[11px]">🏆</span>`
-        : `<span class="w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0">${loc.rank}</span>`;
-
-      inner.innerHTML = `${badge}<span class="max-w-[120px] truncate">${escapeHtml(loc.name)}</span>`;
+      inner.className =
+        "marker-inner flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-amber-400 transition-all duration-150 whitespace-nowrap pointer-events-auto";
+      inner.innerHTML = `
+        <span class="w-4 h-4 flex items-center justify-center text-[11px]">🏆</span>
+        <span class="max-w-[120px] truncate">${escapeHtml(loc.name)}</span>
+      `;
       el.appendChild(inner);
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([loc.longitude, loc.latitude])
         .addTo(mapInstance);
 
+      const handle = (e: Event) => {
+        e.stopPropagation();
+        showLocationDetailsRef.current(loc);
+      };
+      inner.addEventListener("click", handle);
+      inner.addEventListener("touchstart", handle);
+
       markersRef.current[loc._id!] = marker;
       bounds.extend([loc.longitude, loc.latitude]);
+      hasCoords = true;
     });
 
-    mapInstance.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 0 });
-  }, [mapInstance, results]);
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+    if (activeOrigin) {
+      const el = document.createElement("div");
+      el.className = "relative flex items-center justify-center w-6 h-6 z-[60]";
+      el.innerHTML = `
+        <span class="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping"></span>
+        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-600 border border-white shadow-md"></span>
+      `;
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([activeOrigin.longitude, activeOrigin.latitude])
+        .addTo(mapInstance);
 
+      const isFromVenue = room.meetingDirection === "from-venue";
+      const originLabel = isFromVenue
+        ? `Your Return Suburb: ${currentParticipant?.location || "Destination"}`
+        : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`;
+      const popup = new mapboxgl.Popup({ offset: 10, closeButton: false }).setHTML(
+        `<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${escapeHtml(originLabel)}</div>`,
+      );
+      marker.setPopup(popup);
+      userMarkerRef.current = marker;
+
+      bounds.extend([activeOrigin.longitude, activeOrigin.latitude]);
+      hasCoords = true;
+    }
+
+    if (hasCoords) {
+      mapInstance.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 0 });
+    }
+
+    // Auto-open the single winner so the route is shown without requiring a click
+    if (winners.length === 1) {
+      setSelectedMapLocationId(winners[0]._id || null);
+    }
+  }, [mapInstance, winnersKey, activeOrigin, currentParticipant?.location, room.meetingDirection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync popup and route geometry when the selected winner or route data changes
+  useEffect(() => {
+    if (!mapInstance || !selectedMapLocationId) return;
+    const location = winners.find((w) => w._id === selectedMapLocationId);
+    if (!location) return;
+
+    const route = routeDistances[selectedMapLocationId];
+
+    if (activePopupRef.current && activePopupRef.current.isOpen()) {
+      const popupHtml = `
+        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+          <p class="font-bold mb-0.5">${escapeHtml(location.name)}</p>
+          ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
+          ${activeOrigin ? (route ? `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
+              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${Math.round(route.duration / 60)} mins</span>
+            </div>
+          ` : `
+            <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
+              <span>Calculating route...</span>
+            </div>
+          `) : ""}
+        </div>
+      `;
+      activePopupRef.current.setHTML(popupHtml);
+    } else if (winners.length === 1) {
+      // Single-winner auto-open path: open the popup now that the map is ready
+      showLocationDetailsRef.current(location);
+    }
+
+    if (route?.geometry) {
+      const geojson =
+        (route.geometry as GeoJSON.FeatureCollection).type === "FeatureCollection"
+          ? (route.geometry as GeoJSON.FeatureCollection)
+          : ({
+              type: "Feature" as const,
+              properties: {},
+              geometry: route.geometry as GeoJSON.Geometry,
+            } as GeoJSON.Feature);
+
+      if (mapInstance.getSource("route")) {
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson as GeoJSON.FeatureCollection | GeoJSON.Feature);
+      } else {
+        mapInstance.addSource("route", {
+          type: "geojson",
+          data: geojson as GeoJSON.FeatureCollection | GeoJSON.Feature,
+        });
+        mapInstance.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: { "line-join": "round", "line-cap": "round" },
+          paint: {
+            "line-color": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", "#3b82f6",
+              "train", "#f97316",
+              "bus", "#eab308",
+              "metro", "#a855f7",
+              "ferry", "#06b6d4",
+              "tram", "#ef4444",
+              "#3b82f6",
+            ] as unknown as mapboxgl.ExpressionSpecification,
+            "line-width": [
+              "match",
+              ["coalesce", ["get", "mode"], "transit"],
+              "walking", 3,
+              "train", 6,
+              "bus", 5,
+              "metro", 6,
+              "ferry", 5,
+              "tram", 5,
+              5,
+            ] as unknown as mapboxgl.ExpressionSpecification,
+            "line-opacity": 0.85,
+          },
+        });
+      }
+    } else if (mapInstance.getSource("route")) {
+      (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData({
+        type: "FeatureCollection",
+        features: [],
+      });
+    }
+  }, [mapInstance, selectedMapLocationId, routeDistances, winners, activeOrigin, isTransit]);
+
+  // ─── Render ────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -132,10 +437,6 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
       </div>
     );
   }
-
-  const totalVotes = results.reduce((sum, r) => sum + r.votes, 0);
-  const hasAnyVotes = totalVotes > 0;
-  const winners = hasAnyVotes ? results.filter((r) => r.rank === 1) : [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -163,11 +464,47 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
                 Location Map
               </span>
               <span className="text-xs text-gray-450 dark:text-gray-450">
-                {hasAnyVotes ? "Winner(s) highlighted in amber" : "No votes were cast"}
+                {hasAnyVotes
+                  ? winners.length > 1
+                    ? "Click a pin to see that route"
+                    : "Winning route highlighted"
+                  : "No votes were cast"}
               </span>
             </div>
             <div className="relative h-[400px] lg:h-[600px] w-full bg-gray-100 dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
               <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+              {isTransit && hasAnyVotes && (
+                <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-10 text-[10px] space-y-2 pointer-events-none select-none max-w-[150px]">
+                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">Transit Legend</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#a855f7]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Metro</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#f97316]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Train</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#eab308]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bus</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#06b6d4]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Ferry</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#ef4444]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#3b82f6]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
