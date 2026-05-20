@@ -1,5 +1,6 @@
 export { default as LobbyView } from "./LobbyView";
 export { default as VotingView } from "./VotingView";
+export { default as ResultsView } from "./ResultsView";
 export { default as LocationCard } from "./LocationCard";
 export { default as ParticipantList } from "./ParticipantList";
 export { default as ShareRoomCard } from "./ShareRoomCard";

@@ -5,6 +5,7 @@ import type { Room } from "@/types/room";
 import { getRoom } from "@/lib/rooms";
 import LobbyView from "./LobbyView";
 import VotingView from "./VotingView";
+import ResultsView from "./ResultsView";
 import { Loader2 } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000;
@@ -88,11 +89,8 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
   }
 
   if (room.status === "completed" || room.status === "closed") {
-    // ITER1-019 will build this, placeholder for nowwww
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-gray-500">Results coming soon (ITER1-019).</p>
-      </div>
+      <ResultsView room={room} currentParticipantId={currentParticipantId} />
     );
   }
 

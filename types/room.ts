@@ -59,7 +59,12 @@ export interface VotePayload {
 }
 
 export interface VoteStatus {
-  hasVoted: boolean;       
-  totalVotes: number;     
+  hasVoted: boolean;
+  totalVotes: number;
   totalParticipants: number;
 }
+
+export type LocationResult = Location & {
+  votes: number;
+  rank: number;
+};
