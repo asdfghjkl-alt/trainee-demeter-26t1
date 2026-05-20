@@ -31,7 +31,7 @@ Please follow the official [MongoDB Community Edition Installation Guide](https:
 
 ### 3. Environment Variables
 
-Create a `.env` file in the root directory of your project and temporarily set the following environment variables:
+Create a `.env` file in the root directory of your project and set the following environment variables:
 
 ```env
 MONGODB_URI='mongodb://localhost:27017/rendezvous'
@@ -39,11 +39,23 @@ JWT_SECRET='random string'
 JWT_NAME='rendezvous_auth'
 NEXT_PUBLIC_BASE_URL='http://localhost:3000'
 NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
+TFNSW_API_KEY='your_tfnsw_api_key_here'
 ```
 
 _(Note: Be sure to change `JWT_SECRET` to a secure, random string in production!)_
 
-### 4. Install Dependencies & Run
+### 4. Getting a Transport for NSW (TfNSW) API Key
+
+The public transit routing features query the official **TfNSW Trip Planner API**. To obtain your free API Key:
+1. Register/Login at the [TfNSW Open Data Hub](https://opendata.transport.nsw.gov.au/).
+2. Navigate to **My Applications** and click **Create New Application**.
+3. Add/enable the **Public Transport Trip Planner API** subscription to your application.
+4. Retrieve your generated key from the application dashboard.
+5. Set `TFNSW_API_KEY` in your `.env` file to this key. 
+
+*(If this key is missing or invalid, the app will gracefully fall back to road-driving routes via Mapbox Directions).*
+
+### 5. Install Dependencies & Run
 
 Install the node modules:
 
@@ -59,7 +71,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application!
 
-### 5. API Documentation
+### 6. API Documentation
 
 This project provides an interactive Swagger UI to easily explore and test the backend API endpoints.
 
