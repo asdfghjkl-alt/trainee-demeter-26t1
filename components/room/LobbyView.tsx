@@ -5,6 +5,7 @@ import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
 import AdminLocationManager from "./AdminLocationManager";
+import DietarySummary from "./DietarySummary";
 import { getRoom } from "@/lib/rooms";
 import { useState, useEffect, useCallback } from "react";
 import { Users, Calendar } from "lucide-react";
@@ -119,6 +120,7 @@ export default function LobbyView({
       {/* Admin vs participant view */}
       {isAdmin ? (
         <div className="space-y-8">
+          <DietarySummary participants={room.participants} />
           <AdminLocationManager room={room} onRoomUpdate={fetchRoom} />
           <AdminControls room={room} onRoomUpdate={fetchRoom} />
         </div>
