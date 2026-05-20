@@ -763,6 +763,39 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
             </div>
             <div className="relative h-[400px] lg:h-[600px] w-full bg-gray-100 dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
               <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+              {/* Transit Legend Overlay */}
+              {currentParticipant?.transportationMode === "transit" && (
+                <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-10 text-[10px] space-y-2 pointer-events-none select-none max-w-[150px]">
+                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">Transit Legend</p>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#a855f7]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Metro</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#f97316]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Train</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#eab308]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bus</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#06b6d4]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Ferry</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-1 rounded bg-[#ef4444]" />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-3.5 h-0.5 border-t border-dashed border-[#3b82f6] bg-transparent" style={{ borderTopWidth: '2px', borderTopStyle: 'dashed' }} />
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
