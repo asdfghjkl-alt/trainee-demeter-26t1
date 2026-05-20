@@ -4,8 +4,12 @@ import { Vote, Room } from "@/database";
 import { apiHandler } from "@/lib/api-handler";
 
 export const POST = apiHandler(
-  async (req: NextRequest, { params }: { params: { code: string } }) => {
-    const roomCode = params.code;
+  async (
+    req: NextRequest,
+    { params }: { params: Promise<{ code: string }> },
+  ) => {
+    const { code } = await params;
+    const roomCode = code;
     const body = await req.json();
     let { participantId, rankings } = body;
 

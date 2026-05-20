@@ -5,3 +5,4 @@ export { default as ParticipantList } from "./ParticipantList";
 export { default as ShareRoomCard } from "./ShareRoomCard";
 export { default as AdminControls } from "./AdminControls";
 export { default as RoomPageClient } from "./RoomPageClient";
+export { default as AdminLocationManager } from "./AdminLocationManager";

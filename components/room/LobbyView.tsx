@@ -4,6 +4,7 @@ import type { Room } from "@/types/room";
 import ParticipantList from "./ParticipantList";
 import AdminControls from "./AdminControls";
 import ShareRoomCard from "./ShareRoomCard";
+import AdminLocationManager from "./AdminLocationManager";
 import { getRoom } from "@/lib/rooms";
 import { useState, useEffect, useCallback } from "react";
 import { Users, Calendar } from "lucide-react";
@@ -109,7 +110,10 @@ export default function LobbyView({
 
       {/* Admin vs participant view */}
       {isAdmin ? (
-        <AdminControls room={room} />
+        <div className="space-y-8">
+          <AdminLocationManager room={room} onRoomUpdate={fetchRoom} />
+          <AdminControls room={room} />
+        </div>
       ) : (
         <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-700 p-6 text-center text-gray-500 dark:text-gray-400">
           <p className="font-medium">Waiting for the admin to start voting…</p>

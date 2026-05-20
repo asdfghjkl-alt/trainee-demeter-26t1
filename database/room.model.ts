@@ -6,6 +6,8 @@ export interface ILocation {
   longitude: number;
   name: string;
   description?: string;
+  category?: string;
+  addedByAdmin?: boolean;
 }
 
 export interface IParticipant {
@@ -39,6 +41,8 @@ const locationSchema = new Schema<ILocation>({
   longitude: { type: Number, required: true },
   name: { type: String, required: true },
   description: { type: String },
+  category: { type: String },
+  addedByAdmin: { type: Boolean, default: false },
 });
 
 const participantSchema = new Schema<IParticipant>(
