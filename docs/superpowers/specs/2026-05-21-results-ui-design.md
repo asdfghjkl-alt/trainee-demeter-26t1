@@ -43,28 +43,18 @@ results screen shown to every participant once a room transitions to
 
 ## File Plan
 
+Everything lives in one file. This screen is shown once at the end of a
+room's lifecycle — no reuse, no shared state with other views — so splitting
+it across multiple files would just be ceremony. Mirrors the pattern in
+`VotingView.tsx`, which inlines its `VotingHeader` and `AdminCloseButton`
+helpers at the bottom of the same file.
+
 ### New files
 
 - `components/room/ResultsView.tsx`
-  Top-level results component. Fetches results on mount, renders header +
-  podium + breakdown + back-to-home + map.
-
-- `components/room/ResultPodium.tsx`
-  Hero podium. Two render modes:
-  - Single winner: trophy icon, big card, name + description + category
-    badge + total votes + "Open in Google Maps" CTA.
-  - Tied winners (≥2 at rank 1): "It's a tie!" headline above a flex row of
-    equally-sized cards.
-
-- `components/room/ResultsBreakdown.tsx`
-  Full ranked list. Each row: rank badge (repeats for ties), name, category
-  pill, votes count, horizontal percentage bar (`votes / maxVotes * 100`),
-  small inline Maps link. Winner rows tinted amber.
-
-- `lib/results.ts`
-  Typed `getResults(code, participantId)` helper, mirroring `lib/rooms.ts`.
-  Returns `LocationResult[] | null` and surfaces 401/400 distinctly so the
-  view can show a meaningful error.
+  Single self-contained file. Top-level `ResultsView` (default export) plus
+  inline helper components: `Header`, `Podium`, `Breakdown`. Also inlines
+  the fetch — one axios call, no need for a separate `lib/results.ts`.
 
 ### Edited files
 
@@ -76,21 +66,24 @@ results screen shown to every participant once a room transitions to
   `<ResultsView room={room} currentParticipantId={currentParticipantId} />`.
 
 - `components/room/index.ts`
-  Export the three new components.
+  Export `ResultsView`.
 
-## Component Details
+## Component Details (all inside `ResultsView.tsx`)
 
-### `ResultsView`
+### `ResultsView` (top-level, default export)
 
 - State: `results`, `loading`, `error`.
-- `useEffect` on mount: calls `getResults`.
+- `useEffect` on mount: fetches `/rooms/{code}/results?participantId=...`
+  via the existing `api` axios instance. Inlined — not a separate lib
+  helper.
 - Layout:
-  - Header: room name, "Results are in!" subtitle, scheduled-date chip,
-    direction chip (mirrors `VotingHeader` pattern, can be a small local
-    helper rather than refactoring).
-  - Left column (col-span-5): `<ResultPodium>` → `<ResultsBreakdown>` →
-    "Back to home" button (links to `/`).
-  - Right column (col-span-7): sticky Mapbox map.
+  - `<Header>` at top: room name, "Results are in!" subtitle, scheduled-date
+    chip, direction chip (local mini-component, mirrors `VotingHeader`
+    style but doesn't try to share code with it).
+  - Left column (col-span-5): `<Podium>` → `<Breakdown>` → "Back to home"
+    button (links to `/`).
+  - Right column (col-span-7): sticky Mapbox map, inlined in the JSX with
+    its own `useEffect` for setup/teardown.
 - Loading: `Loader2` spinner centered.
 - Error states:
   - 401 → "You're not authorized to see these results."
@@ -98,9 +91,9 @@ results screen shown to every participant once a room transitions to
     because parent gates on status).
   - Other → generic "Failed to load results."
 
-### `ResultPodium`
+### `Podium` (inline helper)
 
-Props: `{ winners: LocationResult[] }` (callers filter by `rank === 1`).
+Props: `{ winners: LocationResult[] }` (caller filters by `rank === 1`).
 
 - 1 winner → centered card, 24px trophy, name (text-2xl), description,
   category pill, votes count, Maps button.
@@ -109,7 +102,7 @@ Props: `{ winners: LocationResult[] }` (callers filter by `rank === 1`).
   single case but slightly smaller text. Mobile (`sm:` and down) collapses
   the flex row to stacked.
 
-### `ResultsBreakdown`
+### `Breakdown` (inline helper)
 
 Props: `{ results: LocationResult[] }`.
 
@@ -123,7 +116,7 @@ Props: `{ results: LocationResult[] }`.
 - Zero-votes case: show "No first-preference votes" muted text instead of
   the bar; still render the rank.
 
-### Map (right column)
+### Map (right column, inline in `ResultsView`)
 
 - Reuse the Mapbox init pattern from `VotingView.tsx:211-244`. Keep it
   self-contained inside `ResultsView` for now — a shared `<RoomMap>`
@@ -166,7 +159,7 @@ Manual verification:
 2. Tie case — manually equalize first-preference votes in the DB, confirm
    tie podium + repeated rank badges.
 3. Zero-votes case — admin closes voting with no votes cast, confirm muted
-   state and no confetti.
+   state.
 4. Mobile responsive — single column, podium tie row stacks.
 5. Dark mode — verify amber tints and cyan accents read correctly.
 6. Maps link — open one, confirm it points at the right coordinates.
