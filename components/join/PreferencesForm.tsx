@@ -21,9 +21,11 @@ type EventPreferencesFormData = {
 export default function PreferencesForm({
   code,
   user,
+  meetingDirection = "to-venue",
 }: {
   code: string;
   user?: { name?: string };
+  meetingDirection?: "to-venue" | "from-venue";
 }) {
   const router = useRouter();
   const {
@@ -212,7 +214,7 @@ export default function PreferencesForm({
           {/* Location */}
           <div>
             <label className="my-2 block font-medium text-gray-900 dark:text-white" htmlFor="location">
-              Location (Suburb)
+              {meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location / Suburb"}
               {!useCurrentLocation && <span className="text-red-500"> *</span>}
             </label>
             <input
@@ -222,7 +224,7 @@ export default function PreferencesForm({
                 useCurrentLocation && detectedSuburb
                   ? detectedSuburb
                   : useCurrentLocation
-                    ? "Detecting your suburb..."
+                    ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your suburb...")
                     : "e.g. Newcastle"
               }
               {...register("location")}

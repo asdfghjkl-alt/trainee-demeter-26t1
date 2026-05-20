@@ -47,6 +47,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     preferences,
     transportationMode,
     date,
+    meetingDirection,
     description,
   } = value;
 
@@ -126,6 +127,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     categories: categoryIds,
     status: "waiting",
     date: date ? new Date(date) : undefined,
+    meetingDirection,
     description,
   });
 
