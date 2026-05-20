@@ -1,12 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 
+function formatSydneyDateTime(date: Date) {
+  const optionsDate = { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" } as const;
+  const optionsTime = { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: false } as const;
+
+  const dtfDate = new Intl.DateTimeFormat("en-AU", optionsDate);
+  const dtfTime = new Intl.DateTimeFormat("en-AU", optionsTime);
+
+  const dateParts = dtfDate.formatToParts(date);
+  const timeParts = dtfTime.formatToParts(date);
+
+  const day = dateParts.find(p => p.type === "day")?.value || "";
+  const month = dateParts.find(p => p.type === "month")?.value || "";
+  const year = dateParts.find(p => p.type === "year")?.value || "";
+
+  const hour = timeParts.find(p => p.type === "hour")?.value || "";
+  const minute = timeParts.find(p => p.type === "minute")?.value || "";
+
+  return {
+    itdDate: `${year}${month}${day}`, // e.g. "20260522"
+    itdTime: `${hour}${minute}`       // e.g. "1330"
+  };
+}
+
 export const GET = apiHandler(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const originLat = searchParams.get("originLat");
   const originLng = searchParams.get("originLng");
   const destLat = searchParams.get("destLat");
   const destLng = searchParams.get("destLng");
+  const dateParam = searchParams.get("date");
 
   if (!originLat || !originLng || !destLat || !destLng) {
     return NextResponse.json(
@@ -28,6 +52,16 @@ export const GET = apiHandler(async (req: NextRequest) => {
       url.searchParams.set("type_destination", "coord");
       url.searchParams.set("name_destination", `${destLng}:${destLat}:EPSG:4326`);
       url.searchParams.set("calcNumberOfTrips", "1");
+
+      if (dateParam) {
+        const parsedDate = new Date(dateParam);
+        if (!isNaN(parsedDate.getTime())) {
+          const { itdDate, itdTime } = formatSydneyDateTime(parsedDate);
+          url.searchParams.set("itdDate", itdDate);
+          url.searchParams.set("itdTime", itdTime);
+          url.searchParams.set("depArrMacro", "dep");
+        }
+      }
 
       const response = await fetch(url.toString(), {
         headers: {

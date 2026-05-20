@@ -150,7 +150,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         try {
           const isTransit = currentParticipant?.transportationMode === "transit";
           const url = isTransit
-            ? `/api/routes/transit?originLat=${activeOrigin.latitude}&originLng=${activeOrigin.longitude}&destLat=${loc.latitude}&destLng=${loc.longitude}`
+            ? `/api/routes/transit?originLat=${activeOrigin.latitude}&originLng=${activeOrigin.longitude}&destLat=${loc.latitude}&destLng=${loc.longitude}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
             : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${activeOrigin.longitude},${activeOrigin.latitude};${loc.longitude},${loc.latitude}?access_token=${token}&geometries=geojson`;
 
           const res = await fetch(url);
@@ -193,7 +193,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     };
 
     fetchRoutes();
-  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode]);
+  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode, room.date]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
@@ -809,10 +809,29 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
 // The room name + voting status header
 function VotingHeader({ room, currentParticipant }: { room: Room; currentParticipant?: Participant }) {
+  const formattedDate = useMemo(() => {
+    if (!room.date) return null;
+    try {
+      const d = new Date(room.date);
+      if (isNaN(d.getTime())) return null;
+      return new Intl.DateTimeFormat("en-AU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(d);
+    } catch {
+      return null;
+    }
+  }, [room.date]);
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-gray-100 dark:border-gray-850 pb-4">
       <div className="space-y-1">
         <h1 className="text-gray-900 dark:text-white">{room.name}</h1>
+        {formattedDate && (
+          <p className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+            Scheduled for: {formattedDate}
+          </p>
+        )}
         <p className="text-sm text-gray-500 dark:text-gray-400">
           Voting is open — rank your preferred locations below.
         </p>
