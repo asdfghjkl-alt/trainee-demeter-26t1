@@ -64,6 +64,10 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     }
   }, [room.code, currentParticipantId]);
 
+  useEffect(() => {
+    setRankedLocations(room.locations);
+  }, [room.locations]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosingVote, setIsClosingVote] = useState(false);
 
@@ -183,11 +187,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       map.remove();
       setMapInstance(null);
     };
-  }, [room.locations]);
+  }, []);
 
   // Fit map bounds to include all locations and user current location (if granted)
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
 
     const bounds = new mapboxgl.LngLatBounds();
     let hasCoords = false;
@@ -211,7 +215,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
   const showLocationDetails = (location: Location) => {
     setSelectedMapLocationId(location._id || null);
 
-    if (mapInstance) {
+    if (mapInstance && mapInstance.getCanvasContainer && mapInstance.getCanvasContainer()) {
       mapInstance.flyTo({
         center: [location.longitude, location.latitude],
         zoom: 15,
@@ -224,7 +228,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
       // Find route details
       const route = routeDistances[location._id!];
-      
+
       const popupHtml = `
         <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
           <p class="font-bold mb-0.5">${location.name}</p>
@@ -294,7 +298,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
 
   // Sync labeled markers with rankedLocations ordering & selectedMapLocationId
   useEffect(() => {
-    if (!mapInstance) return;
+    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
 
     // Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
