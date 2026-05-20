@@ -1,4 +1,4 @@
-import CreateRoomForm from "@/components/rooms/CreateRoomForm";
+import CreateRoomForm from "@/components/room/CreateRoomForm";
 import { getSession } from "@/lib/session";
 import connectToDatabase from "@/lib/mongodb";
 import { Category } from "@/database";

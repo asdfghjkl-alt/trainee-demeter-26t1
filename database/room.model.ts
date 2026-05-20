@@ -36,6 +36,8 @@ export interface IRoom extends Document {
   date?: Date;
   meetingDirection?: "to-venue" | "from-venue";
   description?: string;
+  winners?: mongoose.Types.ObjectId[];
+  voteBreakdown?: Record<string, number>;
   createdAt: Date; // The time when the room was created
 }
 
@@ -89,6 +91,8 @@ const roomSchema = new Schema<IRoom>({
     default: "to-venue"
   },
   description: { type: String },
+  winners: [{ type: Schema.Types.ObjectId }],
+  voteBreakdown: { type: Schema.Types.Map, of: Number, default: {} },
   createdAt: { type: Date, default: Date.now },
 });
 

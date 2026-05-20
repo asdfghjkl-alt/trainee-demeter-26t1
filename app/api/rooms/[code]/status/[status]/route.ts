@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 import connectToDatabase from "@/lib/mongodb";
-import { Room } from "@/database";
+import { Room, Vote } from "@/database";
 import { getSession } from "@/lib/session";
 
 interface Context {
@@ -72,6 +72,30 @@ export const PUT = apiHandler(async (req: NextRequest, ctx: Context) => {
         },
         { status: 400 },
       );
+    }
+
+    if (newStatus === "completed") {
+      const votes = await Vote.find({ roomId: room._id });
+      const breakdown: Record<string, number> = {};
+      
+      room.locations.forEach((loc: any) => {
+        breakdown[loc._id.toString()] = 0;
+      });
+
+      votes.forEach((vote: any) => {
+        const firstPref = vote.rankings?.[0]?.toString();
+        if (firstPref && firstPref in breakdown) {
+          breakdown[firstPref] += 1;
+        }
+      });
+
+      const maxVotes = Math.max(...Object.values(breakdown), 0);
+      const winners = Object.keys(breakdown).filter(
+        (locId) => breakdown[locId] === maxVotes
+      );
+
+      room.winners = winners as any;
+      room.voteBreakdown = breakdown;
     }
 
     room.status = newStatus as any;
