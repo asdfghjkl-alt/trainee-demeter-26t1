@@ -2,8 +2,9 @@
 
 import { useForm } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import SuburbAutocomplete from "@/components/ui/inputs/SuburbAutocomplete";
 import { preferencesSchema } from "@/lib/schemas/preferences";
 import api from "@/lib/axios";
 import { TRANSPORTATION_MODES } from "@/lib/constants";
@@ -53,6 +54,10 @@ export default function PreferencesForm({
   const [locationError, setLocationError] = useState<string | null>(null);
   const [detectedSuburb, setDetectedSuburb] = useState<string>("");
   const useCurrentLocation = watch("useCurrentLocation");
+
+  useEffect(() => {
+    register("location");
+  }, [register]);
 
   async function handleUseCurrentLocationChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -211,15 +216,11 @@ export default function PreferencesForm({
             <p className="text-sm text-red-500">{locationError}</p>
           )}
 
-          {/* Location */}
-          <div>
-            <label className="my-2 block font-medium text-gray-900 dark:text-white" htmlFor="location">
-              {meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location / Suburb"}
-              {!useCurrentLocation && <span className="text-red-500"> *</span>}
-            </label>
-            <input
-              id="location"
-              type="text"
+            <SuburbAutocomplete
+              label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location / Suburb"}
+              value={watch("location")}
+              onChange={(val) => setValue("location", val, { shouldValidate: true })}
+              error={errors.location}
               placeholder={
                 useCurrentLocation && detectedSuburb
                   ? detectedSuburb
@@ -227,20 +228,9 @@ export default function PreferencesForm({
                     ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your suburb...")
                     : "e.g. Newcastle"
               }
-              {...register("location")}
               readOnly={useCurrentLocation}
-              className={`w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none ${
-                useCurrentLocation
-                  ? "bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                  : "bg-white dark:bg-[#0a0a0a]"
-              }`}
+              required={!useCurrentLocation}
             />
-            {errors.location && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.location.message}
-              </p>
-            )}
-          </div>
 
           {/* Dietary Requirements */}
           <div>

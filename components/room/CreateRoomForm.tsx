@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useForm, useWatch } from "react-hook-form";
 import InputField from "@/components/ui/inputs/InputField";
+import SuburbAutocomplete from "@/components/ui/inputs/SuburbAutocomplete";
 import { useState, useEffect } from "react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
@@ -25,7 +26,9 @@ export default function CreateRoomForm({
   user,
   initialCategories = [],
 }: {
-  user?: any;
+  user?: {
+    fname?: string;
+  };
   initialCategories?: { _id: string; name: string }[];
 }) {
   const router = useRouter();
@@ -164,6 +167,10 @@ export default function CreateRoomForm({
     loadCategories();
   }, [categories.length]);
 
+  useEffect(() => {
+    register("location");
+  }, [register]);
+
   async function onSubmit(data: CreateRoomFormData) {
     setIsCreating(false);
     setServerError(null);
@@ -221,10 +228,11 @@ export default function CreateRoomForm({
 
       // On successful creation, redirect to /rooms/code
       router.push(`/rooms/${code}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error(error);
+      const err = error as { response?: { data?: { message?: string } } };
       setServerError(
-        error.response?.data?.message ||
+        err.response?.data?.message ||
         "Failed to create room. Please try again.",
       );
       setIsCreating(false);
@@ -519,9 +527,11 @@ export default function CreateRoomForm({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <InputField
+              <SuburbAutocomplete
                 label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location"}
-                name="location"
+                value={watch("location")}
+                onChange={(val) => setValue("location", val, { shouldValidate: true })}
+                error={errors.location}
                 placeholder={
                   useCurrentLocation && detectedSuburb
                     ? detectedSuburb
@@ -529,8 +539,6 @@ export default function CreateRoomForm({
                       ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your starting location...")
                       : "e.g. Kensington"
                 }
-                register={register}
-                error={errors.location}
                 readOnly={useCurrentLocation}
                 required={!useCurrentLocation}
               />
