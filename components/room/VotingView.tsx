@@ -27,9 +27,10 @@ interface Props {
   room: Room;
   currentParticipantId: string;
   onVotingClosed?: () => void;
+  onVoteSubmitted?: () => void;
 }
 
-export default function VotingView({ room, currentParticipantId, onVotingClosed }: Props) {
+export default function VotingView({ room, currentParticipantId, onVotingClosed, onVoteSubmitted }: Props) {
 
   // ─── State ───────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         });
         if (res.data?.hasVoted) {
           setHasVoted(true);
+          onVoteSubmitted?.();
         }
       } catch (err) {
         console.error("Error checking voting status:", err);
@@ -58,7 +60,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     if (room.code && currentParticipantId) {
       checkHasVoted();
     }
-  }, [room.code, currentParticipantId]);
+  }, [room.code, currentParticipantId, onVoteSubmitted]);
 
   useEffect(() => {
     setRankedLocations(room.locations);
@@ -582,11 +584,13 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     try {
       await api.post(`/rooms/${room.code}/votes`, payload);
       setHasVoted(true);
+      onVoteSubmitted?.();
       toast.success("Your vote has been submitted!");
     } catch (error: any) {
       if (error.response?.status === 409) {
         toast.error("You have already voted.");
         setHasVoted(true);
+        onVoteSubmitted?.();
       } else {
         toast.error("Failed to submit vote. Please try again.");
       }

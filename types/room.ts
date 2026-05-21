@@ -50,6 +50,7 @@ export interface Room {
   description?: string;
   winners?: string[];
   voteBreakdown?: Record<string, number>;
+  suggestion?: AlgorithmSuggestion;
   createdAt: string;
 }
 
@@ -68,3 +69,14 @@ export type LocationResult = Location & {
   votes: number;
   rank: number;
 };
+
+export interface AlgorithmScore {
+  maxMinutes: number;
+  meanMinutes: number;
+  stddevMinutes: number;
+}
+
+export interface AlgorithmSuggestion {
+  winnerLocationId: string;
+  scores: Record<string, AlgorithmScore>;
+}

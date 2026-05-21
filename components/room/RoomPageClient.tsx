@@ -19,6 +19,7 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
   const [room, setRoom] = useState<Room>(initialRoom);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasVoted, setHasVoted] = useState(false);
 
   const fetchRoom = useCallback(async () => {
     try {
@@ -38,14 +39,15 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
   useEffect(() => {
     fetchRoom();
 
-    // Do not poll automatically if the room is in the voting phase to avoid disrupting user interaction
-    if (room?.status === "voting") {
+    // Do not poll automatically if the room is in the voting phase to avoid disrupting user interaction,
+    // unless the user has already voted.
+    if (room?.status === "voting" && !hasVoted) {
       return;
     }
 
     const interval = setInterval(fetchRoom, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [fetchRoom, room?.status]);
+  }, [fetchRoom, room?.status, hasVoted]);
 
   if (loading) {
     return (
@@ -84,6 +86,7 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
         room={room}
         currentParticipantId={currentParticipantId}
         onVotingClosed={fetchRoom}
+        onVoteSubmitted={() => setHasVoted(true)}
       />
     );
   }
