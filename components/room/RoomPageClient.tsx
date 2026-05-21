@@ -37,16 +37,27 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
   }, [initialRoom.code, currentParticipantId]);
 
   useEffect(() => {
-    fetchRoom();
+    let active = true;
+    const load = async () => {
+      if (active) {
+        await fetchRoom();
+      }
+    };
+    load();
 
     // Do not poll automatically if the room is in the voting phase to avoid disrupting user interaction,
     // unless the user has already voted.
     if (room?.status === "voting" && !hasVoted) {
-      return;
+      return () => {
+        active = false;
+      };
     }
 
     const interval = setInterval(fetchRoom, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [fetchRoom, room?.status, hasVoted]);
 
   if (loading) {

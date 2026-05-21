@@ -3,6 +3,29 @@ import { apiHandler } from "@/lib/api-handler";
 import connectToDatabase from "@/lib/mongodb";
 import { Room, Vote } from "@/database";
 import { getSession } from "@/lib/session";
+import { Types } from "mongoose";
+
+interface LeanParticipant {
+  _id: Types.ObjectId;
+  userId?: Types.ObjectId | null;
+}
+
+interface LeanLocation {
+  _id: Types.ObjectId;
+  name: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  addedByAdmin?: boolean;
+  category?: string;
+}
+
+interface LeanVote {
+  _id: Types.ObjectId;
+  roomId: Types.ObjectId;
+  participantId: Types.ObjectId;
+  rankings: Types.ObjectId[];
+}
 
 export const GET = apiHandler(
   async (
@@ -24,14 +47,14 @@ export const GET = apiHandler(
     let isAuthorized = false;
 
     if (participantId) {
-      isAuthorized = room.participants.some(
-        (p: any) => p._id && p._id.toString() === participantId,
+      isAuthorized = (room.participants as unknown as LeanParticipant[]).some(
+        (p) => p._id && p._id.toString() === participantId,
       );
     } else {
       const session = await getSession();
       if (session?.userData?._id) {
-        isAuthorized = room.participants.some(
-          (p: any) => p.userId && p.userId.toString() === session.userData._id,
+        isAuthorized = (room.participants as unknown as LeanParticipant[]).some(
+          (p) => p.userId && p.userId.toString() === session.userData._id,
         );
       }
     }
@@ -46,18 +69,19 @@ export const GET = apiHandler(
     if (room.status !== "completed" && room.status !== "closed") {
       return NextResponse.json(
         { message: "Voting has not completed yet for this room" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Calculate votes for all candidate locations dynamically to ensure consistency
     const breakdown: Record<string, number> = {};
-    room.locations.forEach((loc: any) => {
+    const locations = room.locations as unknown as LeanLocation[];
+    locations.forEach((loc) => {
       breakdown[loc._id.toString()] = 0;
     });
 
-    const votes = await Vote.find({ roomId: room._id });
-    votes.forEach((vote: any) => {
+    const votes = (await Vote.find({ roomId: room._id })) as unknown as LeanVote[];
+    votes.forEach((vote) => {
       const firstPref = vote.rankings?.[0]?.toString();
       if (firstPref && firstPref in breakdown) {
         breakdown[firstPref] += 1;
@@ -65,7 +89,7 @@ export const GET = apiHandler(
     });
 
     // Sort locations by votes descending
-    const sortedLocations = [...room.locations].sort((a: any, b: any) => {
+    const sortedLocations = [...locations].sort((a, b) => {
       const votesA = breakdown[a._id.toString()] || 0;
       const votesB = breakdown[b._id.toString()] || 0;
       return votesB - votesA;
@@ -74,7 +98,7 @@ export const GET = apiHandler(
     // Assign ranks (standard tournament ranking: 1, 2, 2, 4)
     let currentRank = 1;
     let prevVotes = -1;
-    const results = sortedLocations.map((loc: any, index: number) => {
+    const results = sortedLocations.map((loc, index) => {
       const votesCount = breakdown[loc._id.toString()] || 0;
       if (votesCount !== prevVotes) {
         currentRank = index + 1;
