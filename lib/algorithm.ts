@@ -68,16 +68,17 @@ function toMapboxProfile(
     case "driving":
       return "driving-traffic";
     case "cycling":
-      return "cycling";
     case "walking":
-    case "transit":
-      // Transit uses walking profile with a time multiplier (see getIsochrone)
       return "walking";
+    case "transit":
+      // For isochrones, cycling speed (~15km/h) is a much better geographical approximation 
+      // of average door-to-door urban transit speed than walking.
+      return "cycling";
   }
 }
 
 /** Multiplier applied to the budget for transit participants' isochrone. */
-const TRANSIT_ISOCHRONE_MULTIPLIER = 2;
+const TRANSIT_ISOCHRONE_MULTIPLIER = 1.2;
 
 // ---------------------------------------------------------------------------
 // Step 1 – Fetch isochrone polygon from Mapbox
@@ -231,11 +232,11 @@ function categoryToQuery(categoryName: string): string {
 }
 
 /**
- * Searches for candidate POIs near the given centre using Mapbox Search Box.
+ * Searches for candidate POIs near the given centers using Mapbox Search Box.
  * One request is made per category; results are deduplicated by name+address.
  */
 export async function searchPOIs(
-  center: { lat: number; lng: number },
+  centers: { lat: number; lng: number }[],
   categoryNames: string[],
   mapboxToken: string,
   limitPerCategory = 8,
@@ -244,49 +245,53 @@ export async function searchPOIs(
   const results: CandidateLocation[] = [];
 
   await Promise.all(
-    categoryNames.map(async (cat) => {
-      const query = encodeURIComponent(categoryToQuery(cat));
-      const url =
-        `https://api.mapbox.com/search/searchbox/v1/forward` +
-        `?q=${query}` +
-        `&proximity=${center.lng},${center.lat}` +
-        `&country=au` +
-        `&limit=${limitPerCategory}` +
-        `&access_token=${mapboxToken}`;
+    centers.map(async (center) => {
+      await Promise.all(
+        categoryNames.map(async (cat) => {
+          const query = encodeURIComponent(categoryToQuery(cat));
+          const url =
+            `https://api.mapbox.com/search/searchbox/v1/forward` +
+            `?q=${query}` +
+            `&proximity=${center.lng},${center.lat}` +
+            `&country=au` +
+            `&limit=${limitPerCategory}` +
+            `&access_token=${mapboxToken}`;
 
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const data = await res.json();
-        const features: any[] = data.features ?? [];
+          try {
+            const res = await fetch(url);
+            if (!res.ok) return;
+            const data = await res.json();
+            const features: any[] = data.features ?? [];
 
-        for (const f of features) {
-          const coords: [number, number] = f.geometry?.coordinates;
-          if (!coords) continue;
-          const [lng, lat] = coords;
-          const address: string =
-            f.properties?.place_formatted ??
-            f.properties?.full_address ??
-            f.properties?.address ??
-            "";
-          const name: string = f.properties?.name ?? "Unknown";
-          const dedupeKey = `${name.toLowerCase()}|${address.toLowerCase()}`;
+            for (const f of features) {
+              const coords: [number, number] = f.geometry?.coordinates;
+              if (!coords) continue;
+              const [lng, lat] = coords;
+              const address: string =
+                f.properties?.place_formatted ??
+                f.properties?.full_address ??
+                f.properties?.address ??
+                "";
+              const name: string = f.properties?.name ?? "Unknown";
+              const dedupeKey = `${name.toLowerCase()}|${address.toLowerCase()}`;
 
-          if (seen.has(dedupeKey)) continue;
-          seen.add(dedupeKey);
+              if (seen.has(dedupeKey)) continue;
+              seen.add(dedupeKey);
 
-          results.push({
-            name,
-            description: address,
-            latitude: lat,
-            longitude: lng,
-            category: cat,
-            mapboxId: f.properties?.mapbox_id,
-          });
-        }
-      } catch (err) {
-        console.error(`POI search failed for category "${cat}":`, err);
-      }
+              results.push({
+                name,
+                description: address,
+                latitude: lat,
+                longitude: lng,
+                category: cat,
+                mapboxId: f.properties?.mapbox_id,
+              });
+            }
+          } catch (err) {
+            console.error("Mapbox search error:", err);
+          }
+        }),
+      );
     }),
   );
 
@@ -302,11 +307,23 @@ async function getTravelTimeMapbox(
   to: { lat: number; lng: number },
   mode: "driving-traffic" | "cycling" | "walking",
   mapboxToken: string,
+  date?: Date,
 ): Promise<number | null> {
-  const url =
+  let url =
     `https://api.mapbox.com/directions/v5/mapbox/${mode}/` +
     `${from.lng},${from.lat};${to.lng},${to.lat}` +
     `?access_token=${mapboxToken}&overview=false`;
+
+  // Mapbox driving-traffic supports depart_at for future times
+  if (mode === "driving-traffic" && date) {
+    const now = new Date();
+    // Only append if it's in the future
+    if (date.getTime() > now.getTime()) {
+      // Mapbox expects ISO8601 without milliseconds, e.g., 2020-11-20T14:30
+      const departAt = date.toISOString().split(".")[0];
+      url += `&depart_at=${departAt}`;
+    }
+  }
 
   try {
     const res = await fetch(url);
@@ -327,14 +344,17 @@ async function getTravelTimeTfNSW(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
   tfnswKey: string,
+  date?: Date,
 ): Promise<number | null> {
+  const targetDate = date ?? new Date();
+  
   // TfNSW Trip Planner API v1
   const params = new URLSearchParams({
     outputFormat: "rapidJSON",
     coordOutputFormat: "EPSG:4326",
     depArrMacro: "dep",
-    itdDate: formatTfNSWDate(new Date()),
-    itdTime: formatTfNSWTime(new Date()),
+    itdDate: formatTfNSWDate(targetDate),
+    itdTime: formatTfNSWTime(targetDate),
     type_origin: "coord",
     name_origin: `${from.lng}:${from.lat}:EPSG:4326`,
     type_destination: "coord",
@@ -395,6 +415,7 @@ export async function scoreCandidates(
   participants: ParticipantCoord[],
   mapboxToken: string,
   meetingDirection: "to-venue" | "from-venue",
+  date?: Date,
   tfnswKey?: string,
 ): Promise<ScoredLocation[]> {
   const scored: ScoredLocation[] = await Promise.all(
@@ -411,18 +432,32 @@ export async function scoreCandidates(
               origin,
               destination,
               tfnswKey,
+              date,
             );
           }
 
-          // Fallback: use Mapbox driving-traffic for transit if TfNSW fails
+          // Fallback: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW fails
           if (minutes == null) {
-            const profile = toMapboxProfile(p.transportationMode);
-            minutes = await getTravelTimeMapbox(
-              origin,
-              destination,
-              profile,
-              mapboxToken,
-            );
+            if (p.transportationMode === "transit") {
+              const driveMinutes = await getTravelTimeMapbox(
+                origin,
+                destination,
+                "driving-traffic",
+                mapboxToken,
+                date,
+              );
+              // In urban areas, transit typically takes ~1.5x longer door-to-door than driving
+              minutes = driveMinutes != null ? driveMinutes * 1.5 : null;
+            } else {
+              const profile = toMapboxProfile(p.transportationMode);
+              minutes = await getTravelTimeMapbox(
+                origin,
+                destination,
+                profile,
+                mapboxToken,
+                date,
+              );
+            }
           }
 
           return minutes ?? FALLBACK_TRAVEL_TIME_MINUTES;
@@ -469,6 +504,7 @@ export async function generateLocations(opts: {
   categoryNames: string[];
   travelBudgetMinutes: number;
   meetingDirection: "to-venue" | "from-venue";
+  date?: Date;
   mapboxToken: string;
   tfnswKey?: string;
   topN?: number;
@@ -478,6 +514,7 @@ export async function generateLocations(opts: {
     categoryNames,
     travelBudgetMinutes,
     meetingDirection,
+    date,
     mapboxToken,
     tfnswKey,
     topN = 5,
@@ -530,19 +567,23 @@ export async function generateLocations(opts: {
   }
 
   // --- Step 3: Centroid ----------------------------------------------------
-  let center: { lat: number; lng: number };
-  if (usedFallback) {
-    // When isochrones don't intersect, fallback to the geographic midpoint of all participants
-    // This is fairer than forcing everyone to commute to the person with the smallest isochrone
-    const avgLat = validParticipants.reduce((sum, p) => sum + p.latitude, 0) / validParticipants.length;
-    const avgLng = validParticipants.reduce((sum, p) => sum + p.longitude, 0) / validParticipants.length;
-    center = { lat: avgLat, lng: avgLng };
-  } else {
-    center = getSearchCenter(intersected);
+  // Calculate the geographic midpoint of all participants
+  const avgLat = validParticipants.reduce((sum, p) => sum + p.latitude, 0) / validParticipants.length;
+  const avgLng = validParticipants.reduce((sum, p) => sum + p.longitude, 0) / validParticipants.length;
+  const geographicMidpoint = { lat: avgLat, lng: avgLng };
+
+  const searchCenters = [geographicMidpoint];
+
+  // If the isochrones successfully intersected, also search around the intersection centroid
+  if (!usedFallback) {
+    const intersectionCentroid = getSearchCenter(intersected);
+    // Only add if it's reasonably distinct to avoid redundant API calls (e.g., >100m away)
+    // For simplicity, we just add both and let deduplication handle it
+    searchCenters.push(intersectionCentroid);
   }
 
   // --- Step 4: POI search --------------------------------------------------
-  const candidates = await searchPOIs(center, categoryNames, mapboxToken);
+  const candidates = await searchPOIs(searchCenters, categoryNames, mapboxToken);
 
   if (candidates.length === 0) {
     throw new Error(
@@ -550,10 +591,13 @@ export async function generateLocations(opts: {
     );
   }
 
+  // Shuffle candidates to ensure a mix of both search centers
+  const shuffledCandidates = candidates.sort(() => 0.5 - Math.random());
+
   // --- Step 5: Score -------------------------------------------------------
-  // Only score the top 20 raw candidates to limit API calls
-  const toScore = candidates.slice(0, 20);
-  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, tfnswKey);
+  // Score the top 30 raw candidates to limit API calls while capturing a diverse pool
+  const toScore = shuffledCandidates.slice(0, 30);
+  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, date, tfnswKey);
 
   return {
     locations: scored.slice(0, topN),

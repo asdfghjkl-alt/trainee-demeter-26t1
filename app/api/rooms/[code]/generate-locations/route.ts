@@ -119,6 +119,7 @@ export const POST = apiHandler(
         categoryNames,
         travelBudgetMinutes,
         meetingDirection: room.meetingDirection,
+        date: room.date ? new Date(room.date) : undefined,
         mapboxToken,
         tfnswKey,
         topN: 5,

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
 import LocationCard from "./LocationCard";
-import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
+import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw, AlertTriangle, ArrowDownUp } from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -639,6 +639,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     }
   };
 
+  // ─── Sort by Travel Time ──────────────────────────────────────────────
+
+  const handleSortByTravelTime = () => {
+    setRankedLocations((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        const timeA = routeDistances[a._id!]?.duration ?? Infinity;
+        const timeB = routeDistances[b._id!]?.duration ?? Infinity;
+        return timeA - timeB;
+      });
+      return sorted;
+    });
+    toast.success("Sorted by fastest travel time");
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -674,13 +688,23 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
             </div>
           ) : (
             <>
-              {/* Instruction text */}
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Drag the cards to rank your preferences.{" "}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Top = most preferred.
-                </span>
-              </p>
+              {/* Instruction text and Sort */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Drag the cards to rank your preferences.{" "}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Top = most preferred.
+                  </span>
+                </p>
+                <button
+                  onClick={handleSortByTravelTime}
+                  title="Sort venues by the fastest travel time"
+                  className="text-xs font-semibold px-2.5 py-1.5 bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-gray-700 dark:text-gray-300 flex items-center gap-1.5 active:scale-95"
+                >
+                  <ArrowDownUp className="w-3.5 h-3.5" />
+                  Sort by Time
+                </button>
+              </div>
 
               {/* Starting location selection card */}
               <div className="flex flex-col gap-2 p-3.5 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
