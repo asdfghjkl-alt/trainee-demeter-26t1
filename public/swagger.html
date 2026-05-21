@@ -15,18 +15,6 @@
       src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js"
       crossorigin
     ></script>
-    <script>
-      window.onload = () => {
-        window.ui = SwaggerUIBundle({
-          url: "/swagger.yaml",
-          dom_id: "#swagger-ui",
-          deepLinking: true,
-          presets: [
-            SwaggerUIBundle.presets.apis,
-            SwaggerUIBundle.SwaggerUIStandalonePreset,
-          ],
-        });
-      };
-    </script>
+    <script src="/swagger-init.js"></script>
   </body>
 </html>
