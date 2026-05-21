@@ -27,9 +27,10 @@ interface Props {
   room: Room;
   currentParticipantId: string;
   onVotingClosed?: () => void;
+  onVoteSubmitted?: () => void;
 }
 
-export default function VotingView({ room, currentParticipantId, onVotingClosed }: Props) {
+export default function VotingView({ room, currentParticipantId, onVotingClosed, onVoteSubmitted }: Props) {
 
   // ─── State ───────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
         });
         if (res.data?.hasVoted) {
           setHasVoted(true);
+          onVoteSubmitted?.();
         }
       } catch (err) {
         console.error("Error checking voting status:", err);
@@ -58,7 +60,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     if (room.code && currentParticipantId) {
       checkHasVoted();
     }
-  }, [room.code, currentParticipantId]);
+  }, [room.code, currentParticipantId, onVoteSubmitted]);
 
   useEffect(() => {
     setRankedLocations(room.locations);
@@ -283,7 +285,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
       console.log("Executing easeTo for:", location.name);
       mapInstance.easeTo({
         center: [location.longitude, location.latitude],
-        zoom: 15,
         duration: 400,
       });
 
@@ -583,11 +584,13 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
     try {
       await api.post(`/rooms/${room.code}/votes`, payload);
       setHasVoted(true);
+      onVoteSubmitted?.();
       toast.success("Your vote has been submitted!");
     } catch (error: any) {
       if (error.response?.status === 409) {
         toast.error("You have already voted.");
         setHasVoted(true);
+        onVoteSubmitted?.();
       } else {
         toast.error("Failed to submit vote. Please try again.");
       }
@@ -802,7 +805,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed 
                       <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3.5 h-0.5 border-t border-dashed border-[#3b82f6] bg-transparent" style={{ borderTopWidth: '2px', borderTopStyle: 'dashed' }} />
+                      <span className="w-3.5 h-1 rounded bg-[#3b82f6]" />
                       <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
                     </div>
                   </div>

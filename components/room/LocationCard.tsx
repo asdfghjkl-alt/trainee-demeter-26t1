@@ -1,5 +1,5 @@
 // components/room/LocationCard.tsx
-import { GripVertical, ExternalLink, ChevronUp, ChevronDown } from "lucide-react";
+import { GripVertical, ExternalLink, ChevronUp, ChevronDown, Search } from "lucide-react";
 import type { Location, Category } from "@/types/room";
 
 interface Props {
@@ -39,6 +39,11 @@ export default function LocationCard({
 }: Props) {
   // Builds a link to view the location on OpenStreetMap
   const mapUrl = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}&zoom=15`;
+
+  // Google search for the place (name + address) so voters can check reviews/photos/hours
+  const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(
+    [location.name, location.description].filter(Boolean).join(" "),
+  )}`;
 
   const handleClick = (e: React.MouseEvent) => {
     if (onViewMap) {
@@ -145,18 +150,35 @@ export default function LocationCard({
         </div>
       </div>
 
-      {/* Map link */}
-      <a
-        href={mapUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={handleClick}
-        className="flex-shrink-0 flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400 hover:underline"
-        aria-label={`View ${location.name} on map`}
-      >
-        <ExternalLink className="w-3.5 h-3.5" />
-        <span className="hidden sm:inline">View map</span>
-      </a>
+      {/* Links: Map (in-app focus) + Google search (external) */}
+      <div className="flex-shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
+        <a
+          href={mapUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleClick}
+          className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-cyan-200 dark:border-cyan-900/50 bg-cyan-50 dark:bg-cyan-950/40 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:text-cyan-300 transition-all hover:bg-cyan-100 dark:hover:bg-cyan-900/40 hover:border-cyan-300 dark:hover:border-cyan-800 hover:shadow-sm active:scale-95"
+          aria-label={`View ${location.name} on map`}
+          title="Focus on map"
+        >
+          <ExternalLink className="w-3.5 h-3.5 transition-transform group-hover:-translate-y-px" />
+          <span className="hidden sm:inline">Map</span>
+        </a>
+        <a
+          href={googleSearchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          draggable={false}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="group inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a0a] px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-gray-900 hover:border-cyan-300 dark:hover:border-cyan-800 hover:text-cyan-700 dark:hover:text-cyan-300 hover:shadow-sm active:scale-95"
+          aria-label={`Search for ${location.name} on Google`}
+          title="Look up on Google"
+        >
+          <Search className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
+          <span className="hidden sm:inline">Google</span>
+        </a>
+      </div>
     </div>
   );
 }

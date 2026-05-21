@@ -253,6 +253,7 @@ export default function CreateRoomForm({
             placeholder="e.g. DevSoc Hangout"
             register={register}
             error={errors.name}
+            required
           />
 
           {/* Date + Category side-by-side on sm+ */}
@@ -307,6 +308,7 @@ export default function CreateRoomForm({
                 className="my-2 block font-medium text-gray-900 dark:text-white"
               >
                 Categories (Select up to 3)
+                <span className="text-red-500"> *</span>
               </label>
 
               {/* Selected Categories List */}
@@ -530,6 +532,7 @@ export default function CreateRoomForm({
                 register={register}
                 error={errors.location}
                 readOnly={useCurrentLocation}
+                required={!useCurrentLocation}
               />
 
               <div>
@@ -538,6 +541,7 @@ export default function CreateRoomForm({
                   className="my-2 block font-medium text-gray-900 dark:text-white"
                 >
                   Transportation Mode
+                  <span className="text-red-500"> *</span>
                 </label>
                 <div className="relative">
                   <select

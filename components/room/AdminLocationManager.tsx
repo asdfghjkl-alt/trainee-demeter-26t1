@@ -246,7 +246,7 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
   return (
     <div className="space-y-8 bg-gray-50/50 dark:bg-gray-900/10 rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-6 shadow-xs backdrop-blur-md">
       <div>
-        <h2 className="text-xl font-bold bg-linear-to-r from-cyan-500 to-blue-600 bg-clip-text text-transparent">
+        <h2 className="text-xl font-bold text-[#0092b8]">
           Admin Location Panel
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
