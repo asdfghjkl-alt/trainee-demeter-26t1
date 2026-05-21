@@ -373,6 +373,7 @@ export async function scoreCandidates(
   candidates: CandidateLocation[],
   participants: ParticipantCoord[],
   mapboxToken: string,
+  meetingDirection: "to-venue" | "from-venue",
   tfnswKey?: string,
 ): Promise<ScoredLocation[]> {
   const scored: ScoredLocation[] = await Promise.all(
@@ -380,11 +381,14 @@ export async function scoreCandidates(
       const travelMinutes: number[] = await Promise.all(
         participants.map(async (p) => {
           let minutes: number | null = null;
+          
+          const origin = meetingDirection === "from-venue" ? { lat: c.latitude, lng: c.longitude } : { lat: p.latitude, lng: p.longitude };
+          const destination = meetingDirection === "from-venue" ? { lat: p.latitude, lng: p.longitude } : { lat: c.latitude, lng: c.longitude };
 
           if (p.transportationMode === "transit" && tfnswKey) {
             minutes = await getTravelTimeTfNSW(
-              { lat: p.latitude, lng: p.longitude },
-              { lat: c.latitude, lng: c.longitude },
+              origin,
+              destination,
               tfnswKey,
             );
           }
@@ -393,8 +397,8 @@ export async function scoreCandidates(
           if (minutes == null) {
             const profile = toMapboxProfile(p.transportationMode);
             minutes = await getTravelTimeMapbox(
-              { lat: p.latitude, lng: p.longitude },
-              { lat: c.latitude, lng: c.longitude },
+              origin,
+              destination,
               profile,
               mapboxToken,
             );
@@ -443,6 +447,7 @@ export async function generateLocations(opts: {
   participants: ParticipantCoord[];
   categoryNames: string[];
   travelBudgetMinutes: number;
+  meetingDirection: "to-venue" | "from-venue";
   mapboxToken: string;
   tfnswKey?: string;
   topN?: number;
@@ -451,6 +456,7 @@ export async function generateLocations(opts: {
     participants,
     categoryNames,
     travelBudgetMinutes,
+    meetingDirection,
     mapboxToken,
     tfnswKey,
     topN = 5,
@@ -522,7 +528,7 @@ export async function generateLocations(opts: {
   // --- Step 5: Score -------------------------------------------------------
   // Only score the top 20 raw candidates to limit API calls
   const toScore = candidates.slice(0, 20);
-  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, tfnswKey);
+  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, tfnswKey);
 
   return {
     locations: scored.slice(0, topN),

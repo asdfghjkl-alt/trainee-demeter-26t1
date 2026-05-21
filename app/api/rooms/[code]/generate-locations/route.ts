@@ -118,6 +118,7 @@ export const POST = apiHandler(
         participants,
         categoryNames,
         travelBudgetMinutes,
+        meetingDirection: room.meetingDirection,
         mapboxToken,
         tfnswKey,
         topN: 5,

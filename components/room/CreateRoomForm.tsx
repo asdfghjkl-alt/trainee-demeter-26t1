@@ -54,12 +54,12 @@ export default function CreateRoomForm({
       dietaryRequirements: [],
       dietaryNotes: "",
       preferences: "",
-      travelBudgetMinutes: 20,
+      travelBudgetMinutes: 30,
     },
   });
 
   const descriptionValue = useWatch({ control, name: "description" }) ?? "";
-  const travelBudgetValue = useWatch({ control, name: "travelBudgetMinutes" }) ?? 20;
+  const travelBudgetValue = useWatch({ control, name: "travelBudgetMinutes" }) ?? 30;
   const DESCRIPTION_MAX = 200;
 
   const [isCreating, setIsCreating] = useState(false);
@@ -496,36 +496,38 @@ export default function CreateRoomForm({
             )}
           </div>
 
-          {/* Travel Budget Slider */}
+          {/* Travel Time Budget */}
           <div>
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <label className="font-medium text-gray-900 dark:text-white">
-                  Travel Time Budget
-                </label>
-                <span className="rounded-full bg-gray-300/70 dark:bg-gray-700/70 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
-                  For Auto-Generate
-                </span>
-              </div>
-              <span className="text-sm font-semibold tabular-nums text-cyan-600 dark:text-cyan-400">
-                {travelBudgetValue} min
+            <div className="mb-3 flex items-center gap-2">
+              <label className="font-medium text-gray-900 dark:text-white">
+                Travel Time Budget
+              </label>
+              <span className="rounded-full bg-gray-300/70 dark:bg-gray-700/70 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                For Auto-Generate
               </span>
             </div>
-            <input
-              type="range"
-              min={5}
-              max={120}
-              step={5}
-              {...register("travelBudgetMinutes", { valueAsNumber: true })}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-cyan-600"
-            />
-            <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1.5 px-0.5">
-              <span>5 min</span>
-              <span className="text-gray-500 dark:text-gray-400 text-center text-xs">
-                Max reachable area each participant can travel to meet
-              </span>
-              <span>2 hr</span>
+            <div className="flex flex-wrap gap-2">
+              {[15, 30, 45, 60, 90, 120].map((mins) => {
+                const isSelected = travelBudgetValue === mins;
+                return (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setValue("travelBudgetMinutes", mins)}
+                    className={`flex-1 min-w-[60px] py-2 px-3 rounded-xl border-2 text-sm font-semibold transition-all ${
+                      isSelected
+                        ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300"
+                        : "border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-700"
+                    }`}
+                  >
+                    {mins >= 60 ? (mins % 60 === 0 ? `${mins / 60} hr` : `${mins / 60 | 0}h ${mins % 60}m`) : `${mins} min`}
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Max reachable area each participant can travel to meet.
+            </p>
           </div>
 
           {/* Travel details section */}
