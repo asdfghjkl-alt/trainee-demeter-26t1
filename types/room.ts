@@ -51,6 +51,7 @@ export interface Room {
   winners?: string[];
   voteBreakdown?: Record<string, number>;
   suggestion?: AlgorithmSuggestion;
+  travelBudgetMinutes?: number;
   createdAt: string;
 }
 

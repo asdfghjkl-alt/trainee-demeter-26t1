@@ -1,5 +1,5 @@
 // components/room/LocationCard.tsx
-import { GripVertical, ExternalLink, ChevronUp, ChevronDown, Search } from "lucide-react";
+import { GripVertical, ExternalLink, ChevronUp, ChevronDown, Search, Sparkles, User } from "lucide-react";
 import type { Location, Category } from "@/types/room";
 
 interface Props {
@@ -140,6 +140,15 @@ export default function LocationCard({
           {category && (
             <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300">
               {category.name}
+            </span>
+          )}
+          {location.addedByAdmin ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+              <User className="w-3 h-3" /> Admin
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300">
+              <Sparkles className="w-3 h-3" /> Auto
             </span>
           )}
           {distanceStr && (

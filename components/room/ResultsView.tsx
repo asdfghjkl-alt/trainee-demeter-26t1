@@ -257,11 +257,32 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
 
+    const coordsCount: Record<string, number> = {};
+    winners.forEach((loc) => {
+      const key = `${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`;
+      coordsCount[key] = (coordsCount[key] || 0) + 1;
+    });
+
+    const coordsSeen: Record<string, number> = {};
+
     const bounds = new mapboxgl.LngLatBounds();
     let hasCoords = false;
 
     winners.forEach((loc) => {
+      const key = `${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`;
+      const totalAtCoord = coordsCount[key];
+      const seenCount = coordsSeen[key] || 0;
+      coordsSeen[key] = seenCount + 1;
+
+      let offset: [number, number] = [0, 0];
+      if (totalAtCoord > 1) {
+        // Shift vertically by 30px per overlapping marker
+        offset = [0, (seenCount - (totalAtCoord - 1) / 2) * 30];
+      }
+
       const el = document.createElement("div");
+      // Add default z-index
+      el.style.zIndex = "1";
       const inner = document.createElement("div");
       inner.className =
         "marker-inner flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-amber-400 transition-all duration-150 whitespace-nowrap pointer-events-auto";
@@ -271,7 +292,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
       `;
       el.appendChild(inner);
 
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el, offset })
         .setLngLat([loc.longitude, loc.latitude])
         .addTo(mapInstance);
 
@@ -331,6 +352,11 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     if (!mapInstance || !selectedMapLocationId) return;
     const location = winners.find((w) => w._id === selectedMapLocationId);
     if (!location) return;
+
+    // Bring selected marker to front
+    Object.entries(markersRef.current).forEach(([id, m]) => {
+      m.getElement().style.zIndex = id === selectedMapLocationId ? "10" : "1";
+    });
 
     const route = routeDistances[selectedMapLocationId];
 
@@ -444,7 +470,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
         <div className="lg:col-span-5 space-y-6">
           <Header room={room} />
 
-          {hasAnyVotes ? <Podium winners={winners} /> : <NoVotesCard />}
+          {hasAnyVotes ? <Podium winners={winners} onViewMap={showLocationDetails} /> : <NoVotesCard />}
 
           <Breakdown results={results} hasAnyVotes={hasAnyVotes} />
 
@@ -557,7 +583,7 @@ function Header({ room }: { room: Room }) {
   );
 }
 
-function Podium({ winners }: { winners: LocationResult[] }) {
+function Podium({ winners, onViewMap }: { winners: LocationResult[]; onViewMap: (loc: LocationResult) => void }) {
   if (winners.length === 1) {
     const w = winners[0];
     return (
@@ -573,16 +599,24 @@ function Podium({ winners }: { winners: LocationResult[] }) {
         <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
           {w.votes} {w.votes === 1 ? "vote" : "votes"}
         </p>
-        <a
-          href={mapsUrl(w)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white border-amber-600 hover:opacity-100"
-        >
-          <MapPin className="w-4 h-4" />
-          Open in Google Maps
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
+            onClick={() => onViewMap(w)}
+            className="btn inline-flex items-center justify-center gap-2 bg-white dark:bg-[#111] hover:bg-gray-50 dark:hover:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:opacity-100"
+          >
+            <MapPin className="w-4 h-4" />
+            View on Map
+          </button>
+          <a
+            href={mapsUrl(w)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn inline-flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white border-amber-600 hover:opacity-100"
+          >
+            Open in Google Maps
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       </div>
     );
   }
@@ -611,16 +645,24 @@ function Podium({ winners }: { winners: LocationResult[] }) {
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
               {w.votes} {w.votes === 1 ? "vote" : "votes"}
             </p>
-            <a
-              href={mapsUrl(w)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
-            >
-              <MapPin className="w-3 h-3" />
-              Open in Maps
-              <ExternalLink className="w-3 h-3" />
-            </a>
+            <div className="flex items-center gap-4 mt-2">
+              <button
+                onClick={() => onViewMap(w)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <MapPin className="w-3 h-3" />
+                Focus Map
+              </button>
+              <a
+                href={mapsUrl(w)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+              >
+                Open in Maps
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
           </div>
         ))}
       </div>

@@ -329,6 +329,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     const location = room.locations.find((l) => l._id === selectedMapLocationId);
     if (!location) return;
 
+    // Bring selected marker to front
+    Object.entries(markersRef.current).forEach(([id, m]) => {
+      m.getElement().style.zIndex = id === selectedMapLocationId ? "10" : "1";
+    });
+
     const route = routeDistances[selectedMapLocationId];
 
     const isTransit = currentParticipant?.transportationMode === "transit";
@@ -429,10 +434,30 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
 
+    const coordsCount: Record<string, number> = {};
+    rankedLocations.forEach((loc) => {
+      const key = `${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`;
+      coordsCount[key] = (coordsCount[key] || 0) + 1;
+    });
+
+    const coordsSeen: Record<string, number> = {};
+
     // Render new markers
     rankedLocations.forEach((location, idx) => {
       const rank = idx + 1;
+      
+      const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+      const totalAtCoord = coordsCount[key];
+      const seenCount = coordsSeen[key] || 0;
+      coordsSeen[key] = seenCount + 1;
+
+      let offset: [number, number] = [0, 0];
+      if (totalAtCoord > 1) {
+        offset = [0, (seenCount - (totalAtCoord - 1) / 2) * 30];
+      }
+
       const el = document.createElement("div");
+      el.style.zIndex = "1";
 
       // Custom inner wrapper to keep Mapbox's classes intact on the outer container
       const inner = document.createElement("div");
@@ -445,7 +470,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       `;
       el.appendChild(inner);
 
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el, offset })
         .setLngLat([location.longitude, location.latitude])
         .addTo(mapInstance);
 

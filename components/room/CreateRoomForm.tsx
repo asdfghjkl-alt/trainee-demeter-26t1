@@ -20,6 +20,7 @@ type CreateRoomFormData = {
   dietaryRequirements: string[];
   dietaryNotes: string;
   preferences: string;
+  travelBudgetMinutes: number;
 };
 
 export default function CreateRoomForm({
@@ -53,10 +54,12 @@ export default function CreateRoomForm({
       dietaryRequirements: [],
       dietaryNotes: "",
       preferences: "",
+      travelBudgetMinutes: 20,
     },
   });
 
   const descriptionValue = useWatch({ control, name: "description" }) ?? "";
+  const travelBudgetValue = useWatch({ control, name: "travelBudgetMinutes" }) ?? 20;
   const DESCRIPTION_MAX = 200;
 
   const [isCreating, setIsCreating] = useState(false);
@@ -220,6 +223,7 @@ export default function CreateRoomForm({
         dietaryRequirements: data.dietaryRequirements,
         dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
+        travelBudgetMinutes: data.travelBudgetMinutes,
       };
 
       const res = await api.post("/rooms", payload);
@@ -490,6 +494,38 @@ export default function CreateRoomForm({
                 {errors.description.message}
               </p>
             )}
+          </div>
+
+          {/* Travel Budget Slider */}
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <label className="font-medium text-gray-900 dark:text-white">
+                  Travel Time Budget
+                </label>
+                <span className="rounded-full bg-gray-300/70 dark:bg-gray-700/70 px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+                  For Auto-Generate
+                </span>
+              </div>
+              <span className="text-sm font-semibold tabular-nums text-cyan-600 dark:text-cyan-400">
+                {travelBudgetValue} min
+              </span>
+            </div>
+            <input
+              type="range"
+              min={5}
+              max={120}
+              step={5}
+              {...register("travelBudgetMinutes", { valueAsNumber: true })}
+              className="w-full h-2 rounded-full appearance-none cursor-pointer accent-cyan-600"
+            />
+            <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1.5 px-0.5">
+              <span>5 min</span>
+              <span className="text-gray-500 dark:text-gray-400 text-center text-xs">
+                Max reachable area each participant can travel to meet
+              </span>
+              <span>2 hr</span>
+            </div>
           </div>
 
           {/* Travel details section */}

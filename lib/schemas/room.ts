@@ -56,6 +56,10 @@ export const roomSchema = Joi.object({
   description: Joi.string().trim().max(200).allow(null, "").optional().messages({
     "string.max": "Description must not exceed 200 characters",
   }),
+  travelBudgetMinutes: Joi.number().integer().min(1).max(120).default(20).optional().messages({
+    "number.min": "Travel budget must be at least 1 minute",
+    "number.max": "Travel budget cannot exceed 120 minutes",
+  }),
 });
 
 export const addLocationSchema = Joi.object({

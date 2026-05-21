@@ -36,10 +36,19 @@ export default function AdminControls({ room, onRoomUpdate }: Props) {
     if (selectedCategories.length === 0) return;
     setIsStarting(true);
     try {
+      if (!room.locations || room.locations.length === 0) {
+        toast.loading("No locations found. Auto-generating venues...", { id: "generateToast" });
+        await api.post(`/rooms/${room.code}/generate-locations`, {
+          travelBudgetMinutes: room.travelBudgetMinutes ?? 20,
+        });
+        toast.dismiss("generateToast");
+        toast.success("Locations auto-generated!");
+      }
       await api.put(`/rooms/${room.code}/status/voting`);
       toast.success("Voting has started!");
       onRoomUpdate();
     } catch (err: any) {
+      toast.dismiss("generateToast");
       toast.error(err.response?.data?.message || "Failed to start voting.");
     } finally {
       setIsStarting(false);
@@ -91,7 +100,11 @@ export default function AdminControls({ room, onRoomUpdate }: Props) {
         className="btn btn-submit flex items-center gap-2"
       >
         <Zap className="w-4 h-4" />
-        {isStarting ? "Generating…" : "Generate Locations & Start Voting"}
+        {isStarting ? (
+          (!room.locations || room.locations.length === 0) ? "Generating Locations..." : "Starting..."
+        ) : (
+          (!room.locations || room.locations.length === 0) ? "Generate & Start Voting" : "Start Voting"
+        )}
       </button>
     </section>
   );
