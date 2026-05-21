@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
 import LocationCard from "./LocationCard";
-import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw } from "lucide-react";
+import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw, AlertTriangle } from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -646,6 +646,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         {/* Left column: Voting details / List */}
         <div className="lg:col-span-5 space-y-6">
           <VotingHeader room={room} currentParticipant={currentParticipant} />
+
+          {room.algorithmNotices && room.algorithmNotices.length > 0 && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Algorithm Notice
+              </div>
+              {room.algorithmNotices.map((notice, i) => (
+                <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                  {notice}
+                </p>
+              ))}
+            </div>
+          )}
 
           {hasVoted ? (
             /* Confirmation message shown after voting */

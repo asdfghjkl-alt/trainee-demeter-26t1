@@ -52,6 +52,7 @@ export interface Room {
   voteBreakdown?: Record<string, number>;
   suggestion?: AlgorithmSuggestion;
   travelBudgetMinutes?: number;
+  algorithmNotices?: string[];
   createdAt: string;
 }
 

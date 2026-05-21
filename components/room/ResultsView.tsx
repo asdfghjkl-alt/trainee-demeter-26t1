@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Room, LocationResult } from "@/types/room";
 import api from "@/lib/axios";
 import axios from "axios";
-import { Trophy, Loader2, MapPin, Home, ExternalLink } from "lucide-react";
+import { Trophy, Loader2, MapPin, Home, ExternalLink, AlertTriangle } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -469,6 +469,20 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-5 space-y-6">
           <Header room={room} />
+
+          {room.algorithmNotices && room.algorithmNotices.length > 0 && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Algorithm Notice
+              </div>
+              {room.algorithmNotices.map((notice, i) => (
+                <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                  {notice}
+                </p>
+              ))}
+            </div>
+          )}
 
           {hasAnyVotes ? <Podium winners={winners} onViewMap={showLocationDetails} /> : <NoVotesCard />}
 

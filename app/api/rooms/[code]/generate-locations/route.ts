@@ -131,6 +131,20 @@ export const POST = apiHandler(
       );
     }
 
+    // --- Build notices ------------------------------------------------------
+    const warnings: string[] = [];
+    if (result.warning) warnings.push(result.warning);
+    if (result.usedFallback) {
+      warnings.push(
+        "Disclaimer: Participants' reachable zones did not overlap based on the travel budget. The algorithm used the geographic midpoint of all participants as a fallback.",
+      );
+    }
+    if (skippedCount > 0 && !result.warning) {
+      warnings.push(
+        `${skippedCount} of ${totalParticipants} participant(s) had no coordinates and were excluded.`,
+      );
+    }
+
     // --- Persist: keep admin-added, replace auto-generated ------------------
     const adminAdded = (room.locations as any[]).filter(
       (l) => l.addedByAdmin === true,
@@ -146,22 +160,10 @@ export const POST = apiHandler(
     }));
 
     room.locations = [...adminAdded, ...newLocations] as any;
+    room.algorithmNotices = warnings;
     await room.save();
 
     // --- Build response -----------------------------------------------------
-    const warnings: string[] = [];
-    if (result.warning) warnings.push(result.warning);
-    if (result.usedFallback) {
-      warnings.push(
-        "Participants' reachable zones did not overlap. The algorithm used the zone of the least-mobile participant as a fallback.",
-      );
-    }
-    if (skippedCount > 0 && !result.warning) {
-      warnings.push(
-        `${skippedCount} of ${totalParticipants} participant(s) had no coordinates and were excluded.`,
-      );
-    }
-
     return NextResponse.json(
       {
         message: "Locations generated successfully",

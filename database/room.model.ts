@@ -39,6 +39,7 @@ export interface IRoom extends Document {
   winners?: mongoose.Types.ObjectId[];
   voteBreakdown?: Record<string, number>;
   travelBudgetMinutes?: number; // Isochrone time budget per participant (1–120, default 20)
+  algorithmNotices?: string[];
   createdAt: Date; // The time when the room was created
 }
 
@@ -95,6 +96,7 @@ const roomSchema = new Schema<IRoom>({
   winners: [{ type: Schema.Types.ObjectId }],
   voteBreakdown: { type: Schema.Types.Map, of: Number, default: {} },
   travelBudgetMinutes: { type: Number, default: 20, min: 1, max: 120 },
+  algorithmNotices: [{ type: String }],
   createdAt: { type: Date, default: Date.now },
 });
 

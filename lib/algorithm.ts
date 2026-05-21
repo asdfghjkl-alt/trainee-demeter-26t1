@@ -21,6 +21,7 @@
 import intersect from "@turf/intersect";
 import centroid from "@turf/centroid";
 import area from "@turf/area";
+import buffer from "@turf/buffer";
 import { featureCollection } from "@turf/helpers";
 
 import type { Feature, Polygon, MultiPolygon } from "geojson";
@@ -94,15 +95,19 @@ export async function getIsochrone(
   mapboxToken: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   const profile = toMapboxProfile(participant.transportationMode);
-  const minutes =
+  const rawMinutes =
     participant.transportationMode === "transit"
-      ? Math.min(budgetMinutes * TRANSIT_ISOCHRONE_MULTIPLIER, 120)
+      ? budgetMinutes * TRANSIT_ISOCHRONE_MULTIPLIER
       : budgetMinutes;
+
+  // Mapbox Isochrone API limits contours_minutes to a maximum of 60.
+  const fetchMinutes = Math.min(rawMinutes, 60);
+  const excessMinutes = rawMinutes > 60 ? rawMinutes - 60 : 0;
 
   const url =
     `https://api.mapbox.com/isochrone/v1/mapbox/${profile}/` +
     `${participant.longitude},${participant.latitude}` +
-    `?contours_minutes=${minutes}&polygons=true&access_token=${mapboxToken}`;
+    `?contours_minutes=${fetchMinutes}&polygons=true&access_token=${mapboxToken}`;
 
   try {
     const res = await fetch(url);
@@ -116,7 +121,21 @@ export async function getIsochrone(
     const data = await res.json();
     const features: Feature<Polygon | MultiPolygon>[] = data.features ?? [];
     // The API returns contours sorted largest-to-smallest; we want the outermost
-    return features[0] ?? null;
+    let poly = features[0] ?? null;
+
+    if (poly && excessMinutes > 0) {
+      // Approximate the extra time by buffering the 60-minute polygon.
+      // Speeds (km/h) -> km/min: Walking (5 km/h) = ~0.083, Cycling (15 km/h) = 0.25, Driving (40 km/h) = 0.67
+      let speedKmPerMin = 0.083; // default to walking/transit
+      if (participant.transportationMode === "cycling") speedKmPerMin = 0.25;
+      if (participant.transportationMode === "driving") speedKmPerMin = 0.67;
+
+      const bufferDistanceKm = excessMinutes * speedKmPerMin;
+      // @turf/buffer expects Geometry/Feature; cast poly as any
+      poly = buffer(poly as any, bufferDistanceKm, { units: "kilometers" }) as Feature<Polygon | MultiPolygon>;
+    }
+
+    return poly;
   } catch (err) {
     console.error("Failed to fetch isochrone:", err);
     return null;
@@ -135,15 +154,16 @@ export async function getIsochrone(
  */
 export function intersectIsochrones(
   polygons: Feature<Polygon | MultiPolygon>[],
-): Feature<Polygon | MultiPolygon> {
+): { polygon: Feature<Polygon | MultiPolygon>; usedFallback: boolean } {
   if (polygons.length === 0) {
     throw new Error("No isochrone polygons provided");
   }
   if (polygons.length === 1) {
-    return polygons[0];
+    return { polygon: polygons[0], usedFallback: false };
   }
 
   let result: Feature<Polygon | MultiPolygon> | null = polygons[0];
+  let usedFallback = false;
 
   for (let i = 1; i < polygons.length; i++) {
     const next = polygons[i];
@@ -157,7 +177,8 @@ export function intersectIsochrones(
       if (intersection) {
         result = intersection;
       } else {
-        // Intersection is empty — fall back to smallest polygon so far
+        // Intersection is empty
+        usedFallback = true;
         console.warn(
           "Isochrone intersection empty at step %d, falling back to smallest polygon",
           i,
@@ -172,7 +193,7 @@ export function intersectIsochrones(
     }
   }
 
-  return result!;
+  return { polygon: result!, usedFallback };
 }
 
 // ---------------------------------------------------------------------------
@@ -503,18 +524,22 @@ export async function generateLocations(opts: {
   if (validPolygons.length === 1) {
     intersected = validPolygons[0];
   } else {
-    // Track whether we ever fell back during intersection
-    const originalArea: number = area(validPolygons[0] as any);
-    intersected = intersectIsochrones(validPolygons);
-    const resultArea = area(intersected);
-    // If the result area equals one of the individual polygons, a fallback occurred
-    if (Math.abs(resultArea - originalArea) < 1) {
-      usedFallback = true;
-    }
+    const res = intersectIsochrones(validPolygons);
+    intersected = res.polygon;
+    usedFallback = res.usedFallback;
   }
 
   // --- Step 3: Centroid ----------------------------------------------------
-  const center = getSearchCenter(intersected);
+  let center: { lat: number; lng: number };
+  if (usedFallback) {
+    // When isochrones don't intersect, fallback to the geographic midpoint of all participants
+    // This is fairer than forcing everyone to commute to the person with the smallest isochrone
+    const avgLat = validParticipants.reduce((sum, p) => sum + p.latitude, 0) / validParticipants.length;
+    const avgLng = validParticipants.reduce((sum, p) => sum + p.longitude, 0) / validParticipants.length;
+    center = { lat: avgLat, lng: avgLng };
+  } else {
+    center = getSearchCenter(intersected);
+  }
 
   // --- Step 4: POI search --------------------------------------------------
   const candidates = await searchPOIs(center, categoryNames, mapboxToken);
