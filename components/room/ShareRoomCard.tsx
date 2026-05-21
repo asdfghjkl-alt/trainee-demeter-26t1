@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Copy, Check, Link2 } from "lucide-react";
+import QRCode from "react-qr-code";
 
 interface Props {
   code: string;
@@ -52,6 +53,17 @@ export default function ShareRoomCard({ code }: Props) {
           )}
           {copiedCode ? "Copied!" : "Copy code"}
         </button>
+      </div>
+
+      {/* QR Code */}
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white p-4">
+        <QRCode
+          value={shareUrl}
+          size={160}
+          level="M"
+          bgColor="#ffffff"
+          fgColor="#000000"
+        />  
       </div>
 
       {/* Shareable Link */}
