@@ -12,12 +12,6 @@ const HOW_IT_WORKS = [
     title: "Create a room",
     description:
       "Set up a meetup in seconds. Choose a name, pick activity categories, and share the unique join code with your friends.",
-    color: "from-cyan-400 to-cyan-600",
-    glow: "shadow-cyan-500/20",
-    border: "border-cyan-200 dark:border-cyan-800",
-    bg: "bg-cyan-50 dark:bg-cyan-950/30",
-    iconColor: "text-cyan-600 dark:text-cyan-400",
-    numberColor: "text-cyan-600/20 dark:text-cyan-400/20",
   },
   {
     step: "02",
@@ -25,12 +19,6 @@ const HOW_IT_WORKS = [
     title: "Everyone joins & shares preferences",
     description:
       "Friends join with the code — no account needed. Each person enters their starting location, transport mode, and dietary needs.",
-    color: "from-violet-400 to-violet-600",
-    glow: "shadow-violet-500/20",
-    border: "border-violet-200 dark:border-violet-800",
-    bg: "bg-violet-50 dark:bg-violet-950/30",
-    iconColor: "text-violet-600 dark:text-violet-400",
-    numberColor: "text-violet-600/20 dark:text-violet-400/20",
   },
   {
     step: "03",
@@ -38,12 +26,6 @@ const HOW_IT_WORKS = [
     title: "Get the fairest meeting spot",
     description:
       "We crunch everyone's data to surface the best locations — fair for all travel times, matching your categories and preferences.",
-    color: "from-emerald-400 to-emerald-600",
-    glow: "shadow-emerald-500/20",
-    border: "border-emerald-200 dark:border-emerald-800",
-    bg: "bg-emerald-50 dark:bg-emerald-950/30",
-    iconColor: "text-emerald-600 dark:text-emerald-400",
-    numberColor: "text-emerald-600/20 dark:text-emerald-400/20",
   },
 ];
 
@@ -151,9 +133,9 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-24">
           {/* Section header */}
           <div className="text-center mb-16 space-y-3">
-            <span className="inline-block text-xs font-bold uppercase tracking-widest text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-200 dark:border-cyan-800">
+            <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500">
               How it works
-            </span>
+            </p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Three steps to the perfect meetup
             </h2>
@@ -169,21 +151,15 @@ export default function Home() {
               const Icon = item.icon;
               return (
                 <Fragment key={item.step}>
-                  <div
-                    className={`relative flex flex-col items-center text-center rounded-2xl border ${item.border} ${item.bg} p-8 shadow-lg ${item.glow} hover:-translate-y-1 transition-transform duration-200 h-full`}
-                  >
+                  <div className="relative flex flex-col items-center text-center rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#141414] p-8 hover:-translate-y-1 transition-transform duration-200 h-full">
                     {/* Step number watermark */}
-                    <span
-                      className={`absolute top-4 right-5 text-6xl font-black select-none ${item.numberColor}`}
-                    >
+                    <span className="absolute top-4 right-5 text-6xl font-black select-none text-gray-100 dark:text-gray-800">
                       {item.step}
                     </span>
 
-                    {/* Icon circle */}
-                    <div
-                      className={`relative z-10 w-16 h-16 rounded-2xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-5 shadow-lg`}
-                    >
-                      <Icon className="w-7 h-7 text-white" />
+                    {/* Icon */}
+                    <div className="relative z-10 w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-5">
+                      <Icon className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
                     </div>
 
                     <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
@@ -196,7 +172,7 @@ export default function Home() {
 
                   {/* Arrow connector between cards on desktop */}
                   {i < HOW_IT_WORKS.length - 1 && (
-                    <div className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-[#0d0d0d] border border-gray-200 dark:border-gray-800 shadow-sm shrink-0 self-center">
+                    <div className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-[#0d0d0d] border border-gray-200 dark:border-gray-800 shrink-0 self-center">
                       <ArrowRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                     </div>
                   )}
