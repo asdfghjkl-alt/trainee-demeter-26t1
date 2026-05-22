@@ -53,6 +53,13 @@ export default function RoomPageClient({ initialRoom, currentParticipantId }: Pr
       };
     }
 
+    // Stop polling once the room is completed or closed, as results are final
+    if (room?.status === "completed" || room?.status === "closed") {
+      return () => {
+        active = false;
+      };
+    }
+
     const interval = setInterval(fetchRoom, POLL_INTERVAL_MS);
     return () => {
       active = false;
