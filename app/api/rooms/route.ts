@@ -49,6 +49,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     date,
     meetingDirection,
     description,
+    travelBudgetMinutes,
   } = value;
 
   const existingCategories = await Category.find({ _id: { $in: categoryIds } });
@@ -129,6 +130,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     date: date ? new Date(date) : undefined,
     meetingDirection,
     description,
+    travelBudgetMinutes: travelBudgetMinutes ?? 20,
   });
 
   await newRoom.save();

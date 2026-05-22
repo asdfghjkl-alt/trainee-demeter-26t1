@@ -79,3 +79,13 @@ To access the documentation:
 1. Ensure the development server is running (`npm run dev`).
 2. Navigate to [http://localhost:3000/api-docs](http://localhost:3000/api-docs) in your browser.
 3. You can also view or lint the raw OpenAPI 3.0 specification file directly at `public/swagger.yaml`.
+
+## TODOs / Known Algorithm Limitations
+
+While the algorithm uses a highly robust Dual-Proximity search to avoid geographical pitfalls, it still has a few known limitations to be improved in the future:
+
+- [ ] **Transit Catchment Accuracy**: The Mapbox `cycling` profile is used to approximate transit isochrones (catchment areas), generating a radial boundary. Real-world transit is "star-shaped" (following corridors), meaning the initial search boundary might slightly overestimate or underestimate transit reachability.
+- [ ] **Transit Transfer Penalty**: The TfNSW routing matrix evaluates strict time duration (minutes) but doesn't penalise the *number of transfers*. A 40-minute commute with 0 transfers will currently lose to a 35-minute commute with 3 bus transfers.
+- [ ] **Mapbox POI Quality ("Ghost Venues")**: The Mapbox Search API occasionally returns outdated venues (permanently closed businesses) or administrative locations tagged incorrectly (e.g. an office staff cafeteria tagged as a public cafe). Integrating Google Places or Yelp API would improve POI quality.
+- [ ] **Mixed-Mode ("Park & Ride") Support**: The algorithm assumes participants use a single mode (either strictly driving or strictly transit). It cannot calculate commutes where a user drives to a station and takes an express train to the destination.
+- [ ] **API Slice Limits**: To prevent rate limits, the algorithm only feeds a maximum of 30 candidate venues into the TfNSW/Mapbox travel-time matrix. It is mathematically possible that the 31st venue could have scored slightly better, but is dropped to save API calls.

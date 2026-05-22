@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
 import LocationCard from "./LocationCard";
-import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw } from "lucide-react";
+import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw, AlertTriangle, ArrowDownUp } from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -206,6 +206,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [id: string]: mapboxgl.Marker }>({});
+  const otherParticipantsMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [selectedMapLocationId, setSelectedMapLocationId] = useState<string | null>(null);
   const activePopupRef = useRef<mapboxgl.Popup | null>(null);
 
@@ -240,6 +241,8 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         userMarkerRef.current.remove();
         userMarkerRef.current = null;
       }
+      otherParticipantsMarkersRef.current.forEach((m) => m.remove());
+      otherParticipantsMarkersRef.current = [];
       map.remove();
       setMapInstance(null);
     };
@@ -328,6 +331,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     if (!mapInstance || !selectedMapLocationId) return;
     const location = room.locations.find((l) => l._id === selectedMapLocationId);
     if (!location) return;
+
+    // Bring selected marker to front
+    Object.entries(markersRef.current).forEach(([id, m]) => {
+      m.getElement().style.zIndex = id === selectedMapLocationId ? "10" : "1";
+    });
 
     const route = routeDistances[selectedMapLocationId];
 
@@ -428,11 +436,34 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     // Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
+    
+    otherParticipantsMarkersRef.current.forEach((m) => m.remove());
+    otherParticipantsMarkersRef.current = [];
+
+    const coordsCount: Record<string, number> = {};
+    rankedLocations.forEach((loc) => {
+      const key = `${loc.latitude.toFixed(4)},${loc.longitude.toFixed(4)}`;
+      coordsCount[key] = (coordsCount[key] || 0) + 1;
+    });
+
+    const coordsSeen: Record<string, number> = {};
 
     // Render new markers
     rankedLocations.forEach((location, idx) => {
       const rank = idx + 1;
+      
+      const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
+      const totalAtCoord = coordsCount[key];
+      const seenCount = coordsSeen[key] || 0;
+      coordsSeen[key] = seenCount + 1;
+
+      let offset: [number, number] = [0, 0];
+      if (totalAtCoord > 1) {
+        offset = [0, (seenCount - (totalAtCoord - 1) / 2) * 30];
+      }
+
       const el = document.createElement("div");
+      el.style.zIndex = "1";
 
       // Custom inner wrapper to keep Mapbox's classes intact on the outer container
       const inner = document.createElement("div");
@@ -445,7 +476,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       `;
       el.appendChild(inner);
 
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el, offset })
         .setLngLat([location.longitude, location.latitude])
         .addTo(mapInstance);
 
@@ -492,7 +523,32 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       marker.setPopup(popup);
       userMarkerRef.current = marker;
     }
-  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection]);
+
+    // Render other participants' markers
+    room.participants.forEach((p) => {
+      if (p._id !== currentParticipant?._id && p.latitude != null && p.longitude != null) {
+        const el = document.createElement("div");
+        el.className = "relative flex items-center justify-center w-4 h-4 z-[50]";
+        el.innerHTML = `
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-400 dark:bg-gray-500 border border-white dark:border-gray-800 shadow-sm"></span>
+        `;
+        
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([p.longitude, p.latitude])
+          .addTo(mapInstance);
+          
+        const isFromVenue = room.meetingDirection === "from-venue";
+        const labelText = isFromVenue ? `${p.name}'s Return Suburb` : `${p.name}'s Suburb`;
+        
+        const popup = new mapboxgl.Popup({ offset: 6, closeButton: false })
+          .setHTML(`<div class="p-1 text-[9px] font-medium text-gray-500 dark:text-gray-400">${labelText}</div>`);
+          
+        marker.setPopup(popup);
+        otherParticipantsMarkersRef.current.push(marker);
+      }
+    });
+
+  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection, room.participants, currentParticipant]);
 
   // Update marker selection classes in place without destroying/recreating DOM elements
   useEffect(() => {
@@ -614,6 +670,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     }
   };
 
+  // ─── Sort by Travel Time ──────────────────────────────────────────────
+
+  const handleSortByTravelTime = () => {
+    setRankedLocations((prev) => {
+      const sorted = [...prev].sort((a, b) => {
+        const timeA = routeDistances[a._id!]?.duration ?? Infinity;
+        const timeB = routeDistances[b._id!]?.duration ?? Infinity;
+        return timeA - timeB;
+      });
+      return sorted;
+    });
+    toast.success("Sorted by fastest travel time");
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -621,6 +691,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         {/* Left column: Voting details / List */}
         <div className="lg:col-span-5 space-y-6">
           <VotingHeader room={room} currentParticipant={currentParticipant} />
+
+          {room.algorithmNotices && room.algorithmNotices.length > 0 && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Algorithm Notice
+              </div>
+              {room.algorithmNotices.map((notice, i) => (
+                <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                  {notice}
+                </p>
+              ))}
+            </div>
+          )}
 
           {hasVoted ? (
             /* Confirmation message shown after voting */
@@ -635,13 +719,23 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
             </div>
           ) : (
             <>
-              {/* Instruction text */}
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Drag the cards to rank your preferences.{" "}
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Top = most preferred.
-                </span>
-              </p>
+              {/* Instruction text and Sort */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Drag the cards to rank your preferences.{" "}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                    Top = most preferred.
+                  </span>
+                </p>
+                <button
+                  onClick={handleSortByTravelTime}
+                  title="Sort venues by the fastest travel time"
+                  className="text-xs font-semibold px-2.5 py-1.5 bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-gray-700 dark:text-gray-300 flex items-center gap-1.5 active:scale-95"
+                >
+                  <ArrowDownUp className="w-3.5 h-3.5" />
+                  Sort by Time
+                </button>
+              </div>
 
               {/* Starting location selection card */}
               <div className="flex flex-col gap-2 p-3.5 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
