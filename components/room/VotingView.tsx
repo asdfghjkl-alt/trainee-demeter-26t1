@@ -206,6 +206,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [id: string]: mapboxgl.Marker }>({});
+  const otherParticipantsMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [selectedMapLocationId, setSelectedMapLocationId] = useState<string | null>(null);
   const activePopupRef = useRef<mapboxgl.Popup | null>(null);
 
@@ -240,6 +241,8 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         userMarkerRef.current.remove();
         userMarkerRef.current = null;
       }
+      otherParticipantsMarkersRef.current.forEach((m) => m.remove());
+      otherParticipantsMarkersRef.current = [];
       map.remove();
       setMapInstance(null);
     };
@@ -433,6 +436,9 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     // Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
+    
+    otherParticipantsMarkersRef.current.forEach((m) => m.remove());
+    otherParticipantsMarkersRef.current = [];
 
     const coordsCount: Record<string, number> = {};
     rankedLocations.forEach((loc) => {
@@ -517,7 +523,32 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       marker.setPopup(popup);
       userMarkerRef.current = marker;
     }
-  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection]);
+
+    // Render other participants' markers
+    room.participants.forEach((p) => {
+      if (p._id !== currentParticipant?._id && p.latitude != null && p.longitude != null) {
+        const el = document.createElement("div");
+        el.className = "relative flex items-center justify-center w-4 h-4 z-[50]";
+        el.innerHTML = `
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-400 dark:bg-gray-500 border border-white dark:border-gray-800 shadow-sm"></span>
+        `;
+        
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([p.longitude, p.latitude])
+          .addTo(mapInstance);
+          
+        const isFromVenue = room.meetingDirection === "from-venue";
+        const labelText = isFromVenue ? `${p.name}'s Return Suburb` : `${p.name}'s Suburb`;
+        
+        const popup = new mapboxgl.Popup({ offset: 6, closeButton: false })
+          .setHTML(`<div class="p-1 text-[9px] font-medium text-gray-500 dark:text-gray-400">${labelText}</div>`);
+          
+        marker.setPopup(popup);
+        otherParticipantsMarkersRef.current.push(marker);
+      }
+    });
+
+  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection, room.participants, currentParticipant]);
 
   // Update marker selection classes in place without destroying/recreating DOM elements
   useEffect(() => {
