@@ -496,6 +496,30 @@ export interface GenerateLocationsResult {
 }
 
 /**
+ * Helper to fetch isochrones for a given budget and check if they all intersect perfectly.
+ * Returns the intersection polygon if feasible, or null if they don't intersect.
+ */
+async function checkIntersectionFeasibility(
+  validParticipants: ParticipantCoord[],
+  budgetMinutes: number,
+  mapboxToken: string,
+): Promise<Feature<Polygon | MultiPolygon> | null> {
+  const isochroneResults = await Promise.all(
+    validParticipants.map((p) => getIsochrone(p, budgetMinutes, mapboxToken)),
+  );
+
+  const validPolygons = isochroneResults.filter(
+    (p): p is Feature<Polygon | MultiPolygon> => p !== null,
+  );
+
+  if (validPolygons.length === 0) return null;
+  if (validPolygons.length === 1) return validPolygons[0];
+
+  const res = intersectIsochrones(validPolygons);
+  return res.usedFallback ? null : res.polygon;
+}
+
+/**
  * Main entry point: runs the full isochrone-intersection pipeline and returns
  * up to `topN` scored candidate locations.
  */
@@ -541,29 +565,60 @@ export async function generateLocations(opts: {
     );
   }
 
-  // --- Step 1: Fetch isochrones --------------------------------------------
-  const isochroneResults = await Promise.all(
-    validParticipants.map((p) => getIsochrone(p, travelBudgetMinutes, mapboxToken)),
-  );
-
-  const validPolygons = isochroneResults.filter(
-    (p): p is Feature<Polygon | MultiPolygon> => p !== null,
-  );
-
-  if (validPolygons.length === 0) {
-    throw new Error("Could not fetch any isochrone polygons from Mapbox. Check your API token.");
-  }
-
-  // --- Step 2: Intersect ---------------------------------------------------
+  // --- Step 1 & 2: Binary Search for Tightest Feasible Intersection --------
   let usedFallback = false;
-  let intersected: Feature<Polygon | MultiPolygon>;
+  let intersected: Feature<Polygon | MultiPolygon> | null = null;
 
-  if (validPolygons.length === 1) {
-    intersected = validPolygons[0];
+  // First check if it's even feasible at the maximum user-provided budget
+  const maxFeasible = await checkIntersectionFeasibility(
+    validParticipants,
+    travelBudgetMinutes,
+    mapboxToken,
+  );
+
+  if (!maxFeasible) {
+    // If it fails at the maximum budget, there is no intersection
+    usedFallback = true;
+    
+    // To ensure the app doesn't crash on Step 3 (if we still need a polygon for some reason)
+    // we fetch the max isochrones again and use the fallback from intersectIsochrones
+    const isochroneResults = await Promise.all(
+      validParticipants.map((p) => getIsochrone(p, travelBudgetMinutes, mapboxToken)),
+    );
+    const validPolygons = isochroneResults.filter(
+      (p): p is Feature<Polygon | MultiPolygon> => p !== null,
+    );
+    if (validPolygons.length === 0) {
+      throw new Error("Could not fetch any isochrone polygons from Mapbox. Check your API token.");
+    }
+    if (validPolygons.length === 1) {
+      intersected = validPolygons[0];
+    } else {
+      intersected = intersectIsochrones(validPolygons).polygon;
+    }
   } else {
-    const res = intersectIsochrones(validPolygons);
-    intersected = res.polygon;
-    usedFallback = res.usedFallback;
+    // It is feasible at the max budget. Let's binary search to find the tightest overlap!
+    let low = 5;
+    let high = travelBudgetMinutes;
+    intersected = maxFeasible;
+
+    while (high - low > 5) {
+      const mid = Math.floor((low + high) / 2);
+      const testFeasible = await checkIntersectionFeasibility(
+        validParticipants,
+        mid,
+        mapboxToken,
+      );
+
+      if (testFeasible) {
+        // We can tighten the budget!
+        intersected = testFeasible;
+        high = mid;
+      } else {
+        // We need more time
+        low = mid + 1;
+      }
+    }
   }
 
   // --- Step 3: Centroid ----------------------------------------------------
@@ -574,8 +629,8 @@ export async function generateLocations(opts: {
 
   const searchCenters = [geographicMidpoint];
 
-  // If the isochrones successfully intersected, also search around the intersection centroid
-  if (!usedFallback) {
+  // If the isochrones successfully intersected, also search around the tight intersection centroid
+  if (!usedFallback && intersected) {
     const intersectionCentroid = getSearchCenter(intersected);
     // Only add if it's reasonably distinct to avoid redundant API calls (e.g., >100m away)
     // For simplicity, we just add both and let deduplication handle it
