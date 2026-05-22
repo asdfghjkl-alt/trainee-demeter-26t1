@@ -39,10 +39,16 @@ JWT_SECRET='random string'
 JWT_NAME='rendezvous_auth'
 NEXT_PUBLIC_BASE_URL='http://localhost:3000'
 NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
+MAPBOX_SECRET_TOKEN='your_mapbox_secret_token_here'
 TFNSW_API_KEY='your_tfnsw_api_key_here'
 ```
 
 _(Note: Be sure to change `JWT_SECRET` to a secure, random string in production!)_
+
+**Important Note on Mapbox Tokens:**
+For security, create **two** tokens in Mapbox:
+1. `NEXT_PUBLIC_MAPBOX_TOKEN`: Add URL restrictions to this token in Mapbox so it can only be used on your domain.
+2. `MAPBOX_SECRET_TOKEN`: Do not add URL restrictions. This is kept completely hidden on the server to make backend API calls.
 
 ### 4. Getting a Transport for NSW (TfNSW) API Key
 
