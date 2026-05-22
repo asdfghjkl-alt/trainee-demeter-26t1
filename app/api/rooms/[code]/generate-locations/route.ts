@@ -60,10 +60,10 @@ export const POST = apiHandler(
     }
 
     // --- Env tokens ---------------------------------------------------------
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const mapboxToken = process.env.MAPBOX_SECRET_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
       return NextResponse.json(
-        { message: "Server configuration error: NEXT_PUBLIC_MAPBOX_TOKEN is not set" },
+        { message: "Server configuration error: Mapbox token is not set" },
         { status: 500 },
       );
     }

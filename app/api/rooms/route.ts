@@ -85,7 +85,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
   let latitude: number | undefined;
   let longitude: number | undefined;
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  const token = process.env.MAPBOX_SECRET_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
   if (token && location) {
     try {
       const searchText = encodeURIComponent(location);
