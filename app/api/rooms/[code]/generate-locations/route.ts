@@ -68,6 +68,7 @@ export const POST = apiHandler(
       );
     }
     const tfnswKey = process.env.TFNSW_API_KEY; // optional
+    const targomoKey = process.env.TARGOMO_API_KEY; // optional
 
     // --- Build participant list ----------------------------------------------
     const participants: ParticipantCoord[] = (
@@ -99,6 +100,14 @@ export const POST = apiHandler(
       );
     }
 
+    // --- Rate Limit Downstream APIs (Prevent DoS / Billing Abuse) -----------
+    if (participants.length > 30) {
+      return NextResponse.json(
+        { message: "Cannot generate locations for more than 30 participants at once to prevent API exhaustion." },
+        { status: 413 }, // Payload Too Large
+      );
+    }
+
     // --- Extract category names (populated) ---------------------------------
     const categoryNames: string[] = (room.categories as any[]).map(
       (c) => c.name as string,
@@ -108,6 +117,13 @@ export const POST = apiHandler(
       return NextResponse.json(
         { message: "Please select at least one category before generating locations" },
         { status: 422 },
+      );
+    }
+
+    if (categoryNames.length > 10) {
+      return NextResponse.json(
+        { message: "Cannot search for more than 10 categories at once." },
+        { status: 413 },
       );
     }
 
@@ -122,6 +138,7 @@ export const POST = apiHandler(
         date: room.date ? new Date(room.date) : undefined,
         mapboxToken,
         tfnswKey,
+        targomoKey,
         topN: 5,
       });
     } catch (err: any) {

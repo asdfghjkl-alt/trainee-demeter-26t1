@@ -5,7 +5,7 @@ Find the fairest place to meet. Rendezvous calculates the best possible meeting 
 ## Tech Stack
 
 - **Frontend**: Next.js (App Router), React, Tailwind CSS v4, Lucide React
-- **Maps & Geolocation**: Mapbox GL JS (`mapbox-gl`), Mapbox Search Box API, Mapbox Directions API
+- **Maps & Geolocation**: Mapbox GL JS (`mapbox-gl`), Mapbox Search Box API, Mapbox Directions API, Targomo API (for transit isochrones)
 - **Backend**: Next.js API Routes, Node.js
 - **Database**: MongoDB (via Mongoose)
 - **Authentication**: JWT, bcrypt
@@ -41,6 +41,7 @@ NEXT_PUBLIC_BASE_URL='http://localhost:3000'
 NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
 MAPBOX_SECRET_TOKEN='your_mapbox_secret_token_here'
 TFNSW_API_KEY='your_tfnsw_api_key_here'
+TARGOMO_API_KEY='your_targomo_api_key_here'
 ```
 
 _(Note: Be sure to change `JWT_SECRET` to a secure, random string in production!)_
@@ -61,7 +62,16 @@ The public transit routing features query the official **TfNSW Trip Planner API*
 
 *(If this key is missing or invalid, the app will gracefully fall back to road-driving routes via Mapbox Directions).*
 
-### 5. Install Dependencies & Run
+### 5. Getting a Targomo API Key (Transit Isochrones)
+
+The algorithm uses **Targomo** to draw accurate transit boundary polygons.
+1. Register at [Targomo](https://www.targomo.com/).
+2. Generate an API Key in your dashboard.
+3. Set `TARGOMO_API_KEY` in your `.env` file to this key.
+
+*(If this key is missing, the algorithm gracefully falls back to a Mapbox cycling heuristic).*
+
+### 6. Install Dependencies & Run
 
 Install the node modules:
 
@@ -77,7 +87,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application!
 
-### 6. API Documentation
+### 7. API Documentation
 
 This project provides an interactive Swagger UI to easily explore and test the backend API endpoints.
 
@@ -90,7 +100,6 @@ To access the documentation:
 
 While the algorithm uses a highly robust Dual-Proximity search to avoid geographical pitfalls, it still has a few known limitations to be improved in the future:
 
-- [ ] **Transit Catchment Accuracy**: The Mapbox `cycling` profile is used to approximate transit isochrones (catchment areas), generating a radial boundary. Real-world transit is "star-shaped" (following corridors), meaning the initial search boundary might slightly overestimate or underestimate transit reachability.
 - [ ] **Transit Transfer Penalty**: The TfNSW routing matrix evaluates strict time duration (minutes) but doesn't penalise the *number of transfers*. A 40-minute commute with 0 transfers will currently lose to a 35-minute commute with 3 bus transfers.
 - [ ] **Mapbox POI Quality ("Ghost Venues")**: The Mapbox Search API occasionally returns outdated venues (permanently closed businesses) or administrative locations tagged incorrectly (e.g. an office staff cafeteria tagged as a public cafe). Integrating Google Places or Yelp API would improve POI quality.
 - [ ] **Mixed-Mode ("Park & Ride") Support**: The algorithm assumes participants use a single mode (either strictly driving or strictly transit). It cannot calculate commutes where a user drives to a station and takes an express train to the destination.

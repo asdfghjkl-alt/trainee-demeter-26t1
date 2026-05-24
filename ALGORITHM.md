@@ -19,7 +19,10 @@ For each participant, the algorithm contacts the **Mapbox Isochrone API** to dra
 
 **Special Handling:**
 - **Mapbox Limit:** Mapbox caps the `contours_minutes` API parameter at 60 minutes. If a participant's travel budget exceeds 60 minutes, the algorithm fetches the 60-minute polygon and uses **Turf.js (`@turf/buffer`)** to artificially expand the polygon outwards by the calculated distance they could cover in the remaining time.
-- **Transit Mode:** Mapbox does not natively support public transit. For participants using transit, the algorithm falls back to the `cycling` profile and applies a `TRANSIT_ISOCHRONE_MULTIPLIER` (currently 1.2x) to the budget. This is because a cyclist's average speed (~15km/h) is a much better geographical approximation of average door-to-door urban transit speed than walking.
+- **Transit Mode (Targomo Integration):** Mapbox does not natively support public transit isochrones. For participants using transit, the algorithm uses the **Targomo API** to generate true "star-shaped" public transit catchments that accurately follow train lines and bus corridors. If the Targomo API fails or the key is missing, it gracefully falls back to a Mapbox `cycling` profile with a 1.2x time multiplier (as cycling speed is a geographical approximation of urban transit speed).
+
+### API Rate Limiting (Abuse Prevention)
+To prevent downstream API exhaustion (Denial of Wallet attacks), the algorithm enforces a strict hard cap of **30 participants** and **10 categories** per room. Requests exceeding this limit are rejected with a 413 Payload Too Large error before any external APIs are pinged.
 
 ### Step 2: Binary Search Intersection (Mini-Max Routing)
 Once all polygons are generated for the maximum travel budget, the algorithm uses **Turf.js (`@turf/intersect`)** to progressively overlay them.

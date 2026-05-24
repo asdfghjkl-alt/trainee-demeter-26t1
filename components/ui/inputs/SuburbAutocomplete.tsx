@@ -101,7 +101,10 @@ export default function SuburbAutocomplete({
           `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedText}&country=au&types=locality,place&limit=10&proximity=ip&access_token=${token}`
         );
 
-        if (!res.ok) throw new Error("Failed to fetch suggestions");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(`Mapbox API error ${res.status}: ${errorData.message || res.statusText}`);
+        }
 
         const data = await res.json();
         console.log(data.features)

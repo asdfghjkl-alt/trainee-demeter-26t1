@@ -94,8 +94,52 @@ export async function getIsochrone(
   participant: ParticipantCoord,
   budgetMinutes: number,
   mapboxToken: string,
+  targomoKey?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
-  const profile = toMapboxProfile(participant.transportationMode);
+  // Use Targomo for true transit isochrones if a key is provided
+  if (participant.transportationMode === "transit" && targomoKey) {
+    try {
+      const url = `https://api.targomo.com/australia/v1/polygon?key=${targomoKey}`;
+      const payload = {
+        sources: [
+          {
+            id: "origin",
+            lat: participant.latitude,
+            lng: participant.longitude,
+          },
+        ],
+        travelType: "transit",
+        edgeWeight: "time",
+        travelEdgeWeights: [budgetMinutes * 60],
+        serializer: "geojson",
+        srid: 4326,
+      };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        console.warn(`Targomo API failed (${res.status}), falling back to Mapbox...`);
+        // Fall back to Mapbox
+      } else {
+        const data = await res.json();
+        const features = data.data?.features ?? data.features ?? [];
+        if (features.length > 0) {
+          return features[0] as Feature<Polygon | MultiPolygon>;
+        }
+      }
+    } catch (err) {
+      console.warn("Targomo request failed, falling back to Mapbox...", err);
+    }
+  }
+
+  let profile = toMapboxProfile(participant.transportationMode);
+  // Mapbox Isochrone API doesn't support driving-traffic, only driving
+  if (profile === "driving-traffic" as any) profile = "driving" as any;
+
   const rawMinutes =
     participant.transportationMode === "transit"
       ? budgetMinutes * TRANSIT_ISOCHRONE_MULTIPLIER
@@ -503,9 +547,10 @@ async function checkIntersectionFeasibility(
   validParticipants: ParticipantCoord[],
   budgetMinutes: number,
   mapboxToken: string,
+  targomoKey?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   const isochroneResults = await Promise.all(
-    validParticipants.map((p) => getIsochrone(p, budgetMinutes, mapboxToken)),
+    validParticipants.map((p) => getIsochrone(p, budgetMinutes, mapboxToken, targomoKey)),
   );
 
   const validPolygons = isochroneResults.filter(
@@ -531,6 +576,7 @@ export async function generateLocations(opts: {
   date?: Date;
   mapboxToken: string;
   tfnswKey?: string;
+  targomoKey?: string;
   topN?: number;
 }): Promise<GenerateLocationsResult> {
   const {
@@ -541,6 +587,7 @@ export async function generateLocations(opts: {
     date,
     mapboxToken,
     tfnswKey,
+    targomoKey,
     topN = 5,
   } = opts;
 
@@ -574,6 +621,7 @@ export async function generateLocations(opts: {
     validParticipants,
     travelBudgetMinutes,
     mapboxToken,
+    targomoKey,
   );
 
   if (!maxFeasible) {
@@ -583,7 +631,7 @@ export async function generateLocations(opts: {
     // To ensure the app doesn't crash on Step 3 (if we still need a polygon for some reason)
     // we fetch the max isochrones again and use the fallback from intersectIsochrones
     const isochroneResults = await Promise.all(
-      validParticipants.map((p) => getIsochrone(p, travelBudgetMinutes, mapboxToken)),
+      validParticipants.map((p) => getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey)),
     );
     const validPolygons = isochroneResults.filter(
       (p): p is Feature<Polygon | MultiPolygon> => p !== null,
@@ -608,6 +656,7 @@ export async function generateLocations(opts: {
         validParticipants,
         mid,
         mapboxToken,
+        targomoKey,
       );
 
       if (testFeasible) {
