@@ -2,8 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 
 function formatSydneyDateTime(date: Date) {
-  const optionsDate = { timeZone: "Australia/Sydney", year: "numeric", month: "2-digit", day: "2-digit" } as const;
-  const optionsTime = { timeZone: "Australia/Sydney", hour: "2-digit", minute: "2-digit", hour12: false } as const;
+  const optionsDate = {
+    timeZone: "Australia/Sydney",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  } as const;
+  const optionsTime = {
+    timeZone: "Australia/Sydney",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  } as const;
 
   const dtfDate = new Intl.DateTimeFormat("en-AU", optionsDate);
   const dtfTime = new Intl.DateTimeFormat("en-AU", optionsTime);
@@ -11,16 +21,16 @@ function formatSydneyDateTime(date: Date) {
   const dateParts = dtfDate.formatToParts(date);
   const timeParts = dtfTime.formatToParts(date);
 
-  const day = dateParts.find(p => p.type === "day")?.value || "";
-  const month = dateParts.find(p => p.type === "month")?.value || "";
-  const year = dateParts.find(p => p.type === "year")?.value || "";
+  const day = dateParts.find((p) => p.type === "day")?.value || "";
+  const month = dateParts.find((p) => p.type === "month")?.value || "";
+  const year = dateParts.find((p) => p.type === "year")?.value || "";
 
-  const hour = timeParts.find(p => p.type === "hour")?.value || "";
-  const minute = timeParts.find(p => p.type === "minute")?.value || "";
+  const hour = timeParts.find((p) => p.type === "hour")?.value || "";
+  const minute = timeParts.find((p) => p.type === "minute")?.value || "";
 
   return {
     itdDate: `${year}${month}${day}`, // e.g. "20260522"
-    itdTime: `${hour}${minute}`       // e.g. "1330"
+    itdTime: `${hour}${minute}`, // e.g. "1330"
   };
 }
 
@@ -30,13 +40,22 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const originLng = searchParams.get("originLng");
   const destLat = searchParams.get("destLat");
   const destLng = searchParams.get("destLng");
-  const dateParam = searchParams.get("date");
+  let dateParam = searchParams.get("date");
 
   if (!originLat || !originLng || !destLat || !destLng) {
     return NextResponse.json(
       { message: "Missing required coordinates parameters" },
-      { status: 400 }
+      { status: 400 },
     );
+  }
+
+  // Transit APIs typically fail if the requested date/time is in the past.
+  // If the room was scheduled for the past, use the current time instead.
+  if (dateParam) {
+    const parsed = new Date(dateParam);
+    if (!isNaN(parsed.getTime()) && parsed.getTime() < Date.now()) {
+      dateParam = new Date().toISOString();
+    }
   }
 
   const apiKey = process.env.TFNSW_API_KEY;
@@ -48,9 +67,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
       url.searchParams.set("outputFormat", "rapidJSON");
       url.searchParams.set("coordOutputFormat", "EPSG:4326");
       url.searchParams.set("type_origin", "coord");
-      url.searchParams.set("name_origin", `${originLng}:${originLat}:EPSG:4326`);
+      url.searchParams.set(
+        "name_origin",
+        `${originLng}:${originLat}:EPSG:4326`,
+      );
       url.searchParams.set("type_destination", "coord");
-      url.searchParams.set("name_destination", `${destLng}:${destLat}:EPSG:4326`);
+      url.searchParams.set(
+        "name_destination",
+        `${destLng}:${destLat}:EPSG:4326`,
+      );
       url.searchParams.set("calcNumberOfTrips", "1");
 
       if (dateParam) {
@@ -79,8 +104,14 @@ export const GET = apiHandler(async (req: NextRequest) => {
           let totalDistance = 0;
 
           // Compare departure and arrival times to get estimated duration
-          const depTimeStr = journey.legs[0].origin?.departureTimeEstimated || journey.legs[0].origin?.departureTimePlanned;
-          const arrTimeStr = journey.legs[journey.legs.length - 1].destination?.arrivalTimeEstimated || journey.legs[journey.legs.length - 1].destination?.arrivalTimePlanned;
+          const depTimeStr =
+            journey.legs[0].origin?.departureTimeEstimated ||
+            journey.legs[0].origin?.departureTimePlanned;
+          const arrTimeStr =
+            journey.legs[journey.legs.length - 1].destination
+              ?.arrivalTimeEstimated ||
+            journey.legs[journey.legs.length - 1].destination
+              ?.arrivalTimePlanned;
 
           let duration = journey.duration || 0;
           if (depTimeStr && arrTimeStr) {
@@ -118,7 +149,9 @@ export const GET = apiHandler(async (req: NextRequest) => {
               mode = "walking";
             } else {
               const prodClass = Number(leg.transportation.product?.class);
-              const prodName = String(leg.transportation.product?.name || "").toLowerCase();
+              const prodName = String(
+                leg.transportation.product?.name || "",
+              ).toLowerCase();
               // Mapping derived from observed TfNSW responses:
               //   class 99 / 100, name "footpath" → walking
               //   class 1  Sydney Trains Network / Regional Trains and Coaches Network → train
@@ -130,7 +163,11 @@ export const GET = apiHandler(async (req: NextRequest) => {
               // Sydney Metro shares class 1 with Sydney Trains, so it's identified by name.
               // Class is checked before name because the "Regional Trains and Coaches" name
               // is shared by class 1 (train) and class 7 (coach).
-              if (prodName.includes("footpath") || prodClass === 99 || prodClass === 100) {
+              if (
+                prodName.includes("footpath") ||
+                prodClass === 99 ||
+                prodClass === 100
+              ) {
                 mode = "walking";
               } else if (prodName.includes("metro")) {
                 mode = "metro";
@@ -140,7 +177,12 @@ export const GET = apiHandler(async (req: NextRequest) => {
                 mode = "bus";
               } else if (prodClass === 9 || prodName.includes("ferry")) {
                 mode = "ferry";
-              } else if (prodClass === 4 || prodName.includes("tram") || prodName.includes("light rail") || prodName.includes("lightrail")) {
+              } else if (
+                prodClass === 4 ||
+                prodName.includes("tram") ||
+                prodName.includes("light rail") ||
+                prodName.includes("lightrail")
+              ) {
                 mode = "tram";
               }
             }
@@ -176,7 +218,10 @@ export const GET = apiHandler(async (req: NextRequest) => {
         }
       }
     } catch (error) {
-      console.error("TfNSW API failed, falling back to Targomo Route API:", error);
+      console.error(
+        "TfNSW API failed, falling back to Targomo Route API:",
+        error,
+      );
     }
   }
 
@@ -195,12 +240,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
           const month = String(d.getMonth() + 1).padStart(2, "0");
           const day = String(d.getDate()).padStart(2, "0");
           transitFrameDate = parseInt(`${year}${month}${day}`, 10);
-          transitFrameTime = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+          transitFrameTime =
+            d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
         }
       }
 
       const payload: any = {
-        sources: [{ id: "src", lat: Number(originLat), lng: Number(originLng) }],
+        sources: [
+          { id: "src", lat: Number(originLat), lng: Number(originLng) },
+        ],
         targets: [{ id: "tgt", lat: Number(destLat), lng: Number(destLng) }],
         travelType: "transit",
         pathSerializer: "geojson",
@@ -215,10 +263,10 @@ export const GET = apiHandler(async (req: NextRequest) => {
             frame: {
               date: transitFrameDate,
               time: transitFrameTime,
-              duration: 3600
+              duration: 3600,
             },
-            maxTransfers: 5
-          }
+            maxTransfers: 5,
+          },
         };
       }
 
@@ -230,10 +278,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
       if (res.ok) {
         const data = await res.json();
-        
+
         // Extract features (Targomo API nests them inside data.routes)
-        const rawFeatures = data.features || data.data?.features || data.routes?.[0]?.features || data.data?.routes?.[0]?.features || [];
-        
+        const rawFeatures =
+          data.features ||
+          data.data?.features ||
+          data.routes?.[0]?.features ||
+          data.data?.routes?.[0]?.features ||
+          [];
+
         if (rawFeatures && rawFeatures.length > 0) {
           const legsData = [];
           const features = [];
@@ -243,19 +296,31 @@ export const GET = apiHandler(async (req: NextRequest) => {
           for (const f of rawFeatures) {
             if (f.geometry?.type === "LineString") {
               const travelType = f.properties?.travelType?.toLowerCase() || "";
-              
+
               if (travelType === "car" || travelType === "driving") {
                 continue;
               }
 
               let mode = "transit";
-              
-              if (travelType === "walk" || travelType === "foot" || travelType === "transfer") {
+
+              if (
+                travelType === "walk" ||
+                travelType === "foot" ||
+                travelType === "transfer"
+              ) {
                 mode = "walking";
               } else {
                 // Try to sniff specific GTFS routeTypes or vehicle names
                 const routeType = f.properties?.routeType;
-                const vehicleType = String(f.properties?.vehicleType || f.properties?.line || f.properties?.type || f.properties?.routeLongName || f.properties?.routeShortName || f.properties?.tripHeadSign || "").toLowerCase();
+                const vehicleType = String(
+                  f.properties?.vehicleType ||
+                    f.properties?.line ||
+                    f.properties?.type ||
+                    f.properties?.routeLongName ||
+                    f.properties?.routeShortName ||
+                    f.properties?.tripHeadSign ||
+                    "",
+                ).toLowerCase();
 
                 if (routeType !== undefined) {
                   // GTFS standard route types
@@ -266,14 +331,30 @@ export const GET = apiHandler(async (req: NextRequest) => {
                   else if (routeType === 4) mode = "ferry";
                 } else if (vehicleType) {
                   // String matching as a fallback
-                  if (vehicleType.includes("train") || vehicleType.includes("rail")) mode = "train";
+                  if (
+                    vehicleType.includes("train") ||
+                    vehicleType.includes("rail")
+                  )
+                    mode = "train";
                   else if (vehicleType.includes("bus")) mode = "bus";
-                  else if (vehicleType.includes("tram") || vehicleType.includes("light")) mode = "tram";
-                  else if (vehicleType.includes("ferry") || vehicleType.includes("boat")) mode = "ferry";
-                  else if (vehicleType.includes("subway") || vehicleType.includes("metro")) mode = "metro";
+                  else if (
+                    vehicleType.includes("tram") ||
+                    vehicleType.includes("light")
+                  )
+                    mode = "tram";
+                  else if (
+                    vehicleType.includes("ferry") ||
+                    vehicleType.includes("boat")
+                  )
+                    mode = "ferry";
+                  else if (
+                    vehicleType.includes("subway") ||
+                    vehicleType.includes("metro")
+                  )
+                    mode = "metro";
                 }
               }
-              
+
               const durationSec = f.properties?.travelTime || 0;
               const distanceMeters = f.properties?.length || 0;
 
@@ -287,7 +368,10 @@ export const GET = apiHandler(async (req: NextRequest) => {
                   coords = coords.map((c: any) => {
                     const lng = (c[0] / 20037508.34) * 180;
                     let lat = (c[1] / 20037508.34) * 180;
-                    lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+                    lat =
+                      (180 / Math.PI) *
+                      (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) -
+                        Math.PI / 2);
                     return [lng, lat];
                   });
                 }
@@ -305,7 +389,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
                 properties: { mode },
                 geometry: {
                   ...f.geometry,
-                  coordinates: coords
+                  coordinates: coords,
                 },
               });
             }
@@ -331,9 +415,25 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
   // Fallback 2: Mapbox Directions API if TfNSW and Google are not configured or fail
   try {
-    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const mapboxToken = process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!mapboxToken) {
+      console.error("Missing Mapbox token for transit route fallback");
+      return NextResponse.json(
+        { message: "Unable to calculate route: missing mapbox token" },
+        { status: 500 }
+      );
+    }
+    
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?access_token=${mapboxToken}&geometries=geojson`;
-    const res = await fetch(url);
+    
+    // Pass along the referer so URL-restricted Mapbox tokens work server-side
+    const referer = req.headers.get("referer") || req.nextUrl?.origin || "";
+    const headers: Record<string, string> = {};
+    if (referer) {
+      headers["Referer"] = referer;
+    }
+    
+    const res = await fetch(url, { headers });
     if (res.ok) {
       const data = await res.json();
       const route = data.routes?.[0];
@@ -369,6 +469,6 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
   return NextResponse.json(
     { message: "Unable to calculate route" },
-    { status: 500 }
+    { status: 500 },
   );
 });
