@@ -71,7 +71,7 @@ function toMapboxProfile(
     case "walking":
       return "walking";
     case "transit":
-      // For isochrones, cycling speed (~15km/h) is a much better geographical approximation 
+      // For isochrones, cycling speed (~15km/h) is a much better geographical approximation
       // of average door-to-door urban transit speed than walking.
       return "cycling";
   }
@@ -122,7 +122,9 @@ export async function getIsochrone(
       });
 
       if (!res.ok) {
-        console.warn(`Targomo API failed (${res.status}), falling back to Mapbox...`);
+        console.warn(
+          `Targomo API failed (${res.status}), falling back to Mapbox...`,
+        );
         // Fall back to Mapbox
       } else {
         const data = await res.json();
@@ -138,12 +140,13 @@ export async function getIsochrone(
 
   let profile = toMapboxProfile(participant.transportationMode);
   // Mapbox Isochrone API doesn't support driving-traffic, only driving
-  if (profile === "driving-traffic" as any) profile = "driving" as any;
+  if (profile === ("driving-traffic" as any)) profile = "driving" as any;
 
-  const rawMinutes =
+  const rawMinutes = Math.round(
     participant.transportationMode === "transit"
       ? budgetMinutes * TRANSIT_ISOCHRONE_MULTIPLIER
-      : budgetMinutes;
+      : budgetMinutes,
+  );
 
   // Mapbox Isochrone API limits contours_minutes to a maximum of 60.
   const fetchMinutes = Math.min(rawMinutes, 60);
@@ -177,7 +180,9 @@ export async function getIsochrone(
 
       const bufferDistanceKm = excessMinutes * speedKmPerMin;
       // @turf/buffer expects Geometry/Feature; cast poly as any
-      poly = buffer(poly as any, bufferDistanceKm, { units: "kilometers" }) as Feature<Polygon | MultiPolygon>;
+      poly = buffer(poly as any, bufferDistanceKm, {
+        units: "kilometers",
+      }) as Feature<Polygon | MultiPolygon>;
     }
 
     return poly;
@@ -207,6 +212,7 @@ export function intersectIsochrones(
     return { polygon: polygons[0], usedFallback: false };
   }
 
+  const startTime = performance.now();
   let result: Feature<Polygon | MultiPolygon> | null = polygons[0];
   let usedFallback = false;
 
@@ -225,7 +231,7 @@ export function intersectIsochrones(
         // Intersection is empty
         usedFallback = true;
         console.warn(
-          "Isochrone intersection empty at step %d, falling back to smallest polygon",
+          "Isochrone intersection empty at step %d, falling back to smallest polygon.",
           i,
         );
         const areaResult = area(result);
@@ -245,9 +251,10 @@ export function intersectIsochrones(
 // Step 3 – Centroid of intersection polygon
 // ---------------------------------------------------------------------------
 
-export function getSearchCenter(
-  polygon: Feature<Polygon | MultiPolygon>,
-): { lat: number; lng: number } {
+export function getSearchCenter(polygon: Feature<Polygon | MultiPolygon>): {
+  lat: number;
+  lng: number;
+} {
   const c = centroid(polygon as any);
   const [lng, lat] = c.geometry.coordinates;
   return { lat, lng };
@@ -391,7 +398,7 @@ async function getTravelTimeTfNSW(
   date?: Date,
 ): Promise<number | null> {
   const targetDate = date ?? new Date();
-  
+
   // TfNSW Trip Planner API v1
   const params = new URLSearchParams({
     outputFormat: "rapidJSON",
@@ -423,8 +430,14 @@ async function getTravelTimeTfNSW(
     const legs: any[] = journeys[0].legs ?? [];
     if (legs.length === 0) return null;
 
-    const firstDep: string = legs[0].origin?.departureTimeEstimated ?? legs[0].origin?.departureTimePlanned ?? "";
-    const lastArr: string = legs[legs.length - 1].destination?.arrivalTimeEstimated ?? legs[legs.length - 1].destination?.arrivalTimePlanned ?? "";
+    const firstDep: string =
+      legs[0].origin?.departureTimeEstimated ??
+      legs[0].origin?.departureTimePlanned ??
+      "";
+    const lastArr: string =
+      legs[legs.length - 1].destination?.arrivalTimeEstimated ??
+      legs[legs.length - 1].destination?.arrivalTimePlanned ??
+      "";
 
     if (!firstDep || !lastArr) return null;
     const diffMs = new Date(lastArr).getTime() - new Date(firstDep).getTime();
@@ -505,9 +518,15 @@ export async function scoreCandidates(
       const travelMinutes: number[] = await Promise.all(
         participants.map(async (p) => {
           let minutes: number | null = null;
-          
-          const origin = meetingDirection === "from-venue" ? { lat: c.latitude, lng: c.longitude } : { lat: p.latitude, lng: p.longitude };
-          const destination = meetingDirection === "from-venue" ? { lat: p.latitude, lng: p.longitude } : { lat: c.latitude, lng: c.longitude };
+
+          const origin =
+            meetingDirection === "from-venue"
+              ? { lat: c.latitude, lng: c.longitude }
+              : { lat: p.latitude, lng: p.longitude };
+          const destination =
+            meetingDirection === "from-venue"
+              ? { lat: p.latitude, lng: p.longitude }
+              : { lat: c.latitude, lng: c.longitude };
 
           if (p.transportationMode === "transit" && tfnswKey) {
             minutes = await getTravelTimeTfNSW(
@@ -519,8 +538,16 @@ export async function scoreCandidates(
           }
 
           // Fallback 1: Targomo Transit Routing
-          if (minutes == null && p.transportationMode === "transit" && targomoKey) {
-            minutes = await getTravelTimeTargomo(origin, destination, targomoKey);
+          if (
+            minutes == null &&
+            p.transportationMode === "transit" &&
+            targomoKey
+          ) {
+            minutes = await getTravelTimeTargomo(
+              origin,
+              destination,
+              targomoKey,
+            );
           }
 
           // Fallback 2: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW & Targomo fail
@@ -560,9 +587,20 @@ export async function scoreCandidates(
       const stddevMinutes = Math.sqrt(variance);
 
       // Composite penalty: minimise worst case > mean > variance
-      const score = -(0.5 * maxMinutes + 0.3 * meanMinutes + 0.2 * stddevMinutes);
+      const score = -(
+        0.5 * maxMinutes +
+        0.3 * meanMinutes +
+        0.2 * stddevMinutes
+      );
 
-      return { ...c, travelMinutes, maxMinutes, meanMinutes, stddevMinutes, score };
+      return {
+        ...c,
+        travelMinutes,
+        maxMinutes,
+        meanMinutes,
+        stddevMinutes,
+        score,
+      };
     }),
   );
 
@@ -593,7 +631,9 @@ async function checkIntersectionFeasibility(
   targomoKey?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   const isochroneResults = await Promise.all(
-    validParticipants.map((p) => getIsochrone(p, budgetMinutes, mapboxToken, targomoKey)),
+    validParticipants.map((p) =>
+      getIsochrone(p, budgetMinutes, mapboxToken, targomoKey),
+    ),
   );
 
   const validPolygons = isochroneResults.filter(
@@ -670,17 +710,21 @@ export async function generateLocations(opts: {
   if (!maxFeasible) {
     // If it fails at the maximum budget, there is no intersection
     usedFallback = true;
-    
+
     // To ensure the app doesn't crash on Step 3 (if we still need a polygon for some reason)
     // we fetch the max isochrones again and use the fallback from intersectIsochrones
     const isochroneResults = await Promise.all(
-      validParticipants.map((p) => getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey)),
+      validParticipants.map((p) =>
+        getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey),
+      ),
     );
     const validPolygons = isochroneResults.filter(
       (p): p is Feature<Polygon | MultiPolygon> => p !== null,
     );
     if (validPolygons.length === 0) {
-      throw new Error("Could not fetch any isochrone polygons from Mapbox. Check your API token.");
+      throw new Error(
+        "Could not fetch any isochrone polygons from Mapbox. Check your API token.",
+      );
     }
     if (validPolygons.length === 1) {
       intersected = validPolygons[0];
@@ -715,8 +759,12 @@ export async function generateLocations(opts: {
 
   // --- Step 3: Centroid ----------------------------------------------------
   // Calculate the geographic midpoint of all participants
-  const avgLat = validParticipants.reduce((sum, p) => sum + p.latitude, 0) / validParticipants.length;
-  const avgLng = validParticipants.reduce((sum, p) => sum + p.longitude, 0) / validParticipants.length;
+  const avgLat =
+    validParticipants.reduce((sum, p) => sum + p.latitude, 0) /
+    validParticipants.length;
+  const avgLng =
+    validParticipants.reduce((sum, p) => sum + p.longitude, 0) /
+    validParticipants.length;
   const geographicMidpoint = { lat: avgLat, lng: avgLng };
 
   const searchCenters = [geographicMidpoint];
@@ -730,7 +778,11 @@ export async function generateLocations(opts: {
   }
 
   // --- Step 4: POI search --------------------------------------------------
-  const candidates = await searchPOIs(searchCenters, categoryNames, mapboxToken);
+  const candidates = await searchPOIs(
+    searchCenters,
+    categoryNames,
+    mapboxToken,
+  );
 
   if (candidates.length === 0) {
     throw new Error(
@@ -744,7 +796,15 @@ export async function generateLocations(opts: {
   // --- Step 5: Score -------------------------------------------------------
   // Score the top 30 raw candidates to limit API calls while capturing a diverse pool
   const toScore = shuffledCandidates.slice(0, 30);
-  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, date, tfnswKey, targomoKey);
+  const scored = await scoreCandidates(
+    toScore,
+    validParticipants,
+    mapboxToken,
+    meetingDirection,
+    date,
+    tfnswKey,
+    targomoKey,
+  );
 
   return {
     locations: scored.slice(0, topN),

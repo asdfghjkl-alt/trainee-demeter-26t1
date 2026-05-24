@@ -13,6 +13,8 @@ Find the fairest place to meet. Rendezvous calculates the best possible meeting 
 ## Key Features
 
 - **Admin Location Search**: Interactive search box using the Mapbox Search Box API with suggestion listing and full details retrieval. Uses session token grouping and debouncing to keep API consumption well within the Mapbox free tier.
+- **Admin Lobby Overview Map**: Before voting begins, the admin sees a persistent Mapbox map showing all participants' geocoded positions (pulsing dots) and all added/auto-generated venue markers with color-coded legends. The map preserves pan/zoom state across live polling updates.
+- **Deferred Auto-Generation**: Venue auto-generation only triggers when the admin clicks "Start Voting", preventing needless API calls during lobby setup. Admin-added locations are always preserved.
 - **Multi-Modal Street Routing**: Uses the Mapbox Directions API to fetch street-level travel distances and times for participants. Supported profiles: driving, walking, cycling, and public transit (via a road network proxy).
 - **Persistent Interactive Map**: Persistently shows proposed venues and user location. Clicking location cards or pins draws the active road route path dynamically.
 - **Real-Time GPS Tracking**: Places a pulsing blue dot representing the user's current GPS location on the voting map, automatically fitting bounds to show all candidates relative to the user.
@@ -60,14 +62,15 @@ The public transit routing features query the official **TfNSW Trip Planner API*
 4. Retrieve your generated key from the application dashboard.
 5. Set `TFNSW_API_KEY` in your `.env` file to this key. 
 
-*(Note: Because TfNSW is a state-level agency, true public transit routing and map-drawn transit lines will only work for locations within New South Wales, Australia. If you use the app outside of NSW, or if the key is missing/invalid, the app will gracefully fall back to road-driving routes via Mapbox Directions).*
+*(Note: Because TfNSW is a state-level agency, true public transit routing and map-drawn transit lines will only work for locations within New South Wales, Australia. If you use the app outside of NSW, or if the key is missing/invalid, the app will gracefully fall back to the **Google Maps Directions API** to draw accurate transit lines, provided you have set `GOOGLE_MAPS_API_KEY` in your `.env`. Otherwise, it falls back to a generic road-following line via Mapbox).*
 
 ### 5. Getting a Targomo API Key (Transit Isochrones)
 
-The algorithm uses **Targomo** to draw accurate transit boundary polygons.
-1. Register at [Targomo](https://www.targomo.com/).
-2. Generate an API Key in your dashboard.
-3. Set `TARGOMO_API_KEY` in your `.env` file to this key.
+The algorithm uses **Targomo** to draw accurate transit boundary polygons to find meeting spots.
+1. Register for a free account at [Targomo](https://www.targomo.com/).
+2. Navigate to your Targomo Dashboard and go to the **API Keys** section.
+3. Generate a new API Key.
+4. Open your `.env` file and set `TARGOMO_API_KEY='your_key_here'`.
 
 *(If this key is missing, the algorithm gracefully falls back to a Mapbox cycling heuristic).*
 

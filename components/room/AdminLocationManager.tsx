@@ -2,7 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Room } from "@/types/room";
-import { Search, MapPin, Plus, Loader2, RefreshCw, Trash2, Sparkles, AlertTriangle } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Plus,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  Sparkles,
+} from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -30,12 +38,15 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<MapboxSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<SelectedLocationDetails | null>(null);
+  const [selectedLocation, setSelectedLocation] =
+    useState<SelectedLocationDetails | null>(null);
 
   // Session Token for Mapbox Search Box API billing/grouping
   const sessionTokenRef = useRef("");
   const refreshSessionToken = useCallback(() => {
-    sessionTokenRef.current = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    sessionTokenRef.current =
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15);
   }, []);
 
   useEffect(() => {
@@ -48,13 +59,19 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
   const [isAdding, setIsAdding] = useState(false);
 
   // Updating location category state
-  const [updatingLocationId, setUpdatingLocationId] = useState<string | null>(null);
+  const [updatingLocationId, setUpdatingLocationId] = useState<string | null>(
+    null,
+  );
 
-  // Generate locations state
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateWarnings, setGenerateWarnings] = useState<string[]>([]);
+  // Overview map (lobby map showing all participants + locations)
+  const overviewMapContainerRef = useRef<HTMLDivElement>(null);
+  const [overviewMapInstance, setOverviewMapInstance] =
+    useState<mapboxgl.Map | null>(null);
+  const overviewLocationMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const overviewParticipantMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const prevOverviewDataKeyRef = useRef<string>("");
 
-  // Map state and ready flag
+  // Map state and ready flag (single location preview when adding)
   const [mapReady, setMapReady] = useState(false);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -128,7 +145,7 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
     try {
       const searchText = encodeURIComponent(query);
       const res = await fetch(
-        `https://api.mapbox.com/search/searchbox/v1/suggest?q=${searchText}&country=au&session_token=${sessionTokenRef.current}&access_token=${token}`
+        `https://api.mapbox.com/search/searchbox/v1/suggest?q=${searchText}&country=au&session_token=${sessionTokenRef.current}&access_token=${token}`,
       );
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
@@ -151,7 +168,7 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
     setIsSearching(true);
     try {
       const res = await fetch(
-        `https://api.mapbox.com/search/searchbox/v1/retrieve/${sug.mapbox_id}?session_token=${sessionTokenRef.current}&access_token=${token}`
+        `https://api.mapbox.com/search/searchbox/v1/retrieve/${sug.mapbox_id}?session_token=${sessionTokenRef.current}&access_token=${token}`,
       );
       if (!res.ok) throw new Error("Retrieval failed");
       const data = await res.json();
@@ -160,7 +177,11 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
         const feat = data.features[0];
         const details: SelectedLocationDetails = {
           name: feat.properties.name || sug.name,
-          full_address: feat.properties.full_address || feat.properties.place_formatted || sug.place_formatted || "",
+          full_address:
+            feat.properties.full_address ||
+            feat.properties.place_formatted ||
+            sug.place_formatted ||
+            "",
           latitude: feat.geometry.coordinates[1],
           longitude: feat.geometry.coordinates[0],
         };
@@ -212,7 +233,10 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
   };
 
   // Update an existing location's category
-  const handleCategoryChange = async (locationId: string, categoryId: string) => {
+  const handleCategoryChange = async (
+    locationId: string,
+    categoryId: string,
+  ) => {
     setUpdatingLocationId(locationId);
     try {
       await api.patch(`/rooms/${room.code}/locations`, {
@@ -245,73 +269,203 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
     }
   };
 
-  const handleGenerateLocations = async () => {
-    setIsGenerating(true);
-    setGenerateWarnings([]);
-    try {
-      const res = await api.post(`/rooms/${room.code}/generate-locations`, {
-        travelBudgetMinutes: room.travelBudgetMinutes ?? 20,
-      });
-      if (res.data.warnings?.length) {
-        setGenerateWarnings(res.data.warnings);
+  // ─── Overview Map ───────────────────────────────────────────────────
+
+  // Initialize persistent overview map
+  useEffect(() => {
+    if (!overviewMapContainerRef.current) return;
+
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) return;
+    mapboxgl.accessToken = token;
+
+    const map = new mapboxgl.Map({
+      container: overviewMapContainerRef.current,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [151.2093, -33.8688],
+      zoom: 11,
+    });
+
+    map.on("load", () => {
+      map.resize();
+      setOverviewMapInstance(map);
+    });
+
+    return () => {
+      overviewLocationMarkersRef.current.forEach((m) => m.remove());
+      overviewLocationMarkersRef.current = [];
+      overviewParticipantMarkersRef.current.forEach((m) => m.remove());
+      overviewParticipantMarkersRef.current = [];
+      map.remove();
+      setOverviewMapInstance(null);
+    };
+  }, []);
+
+  // Sync overview map markers with participants and locations
+  useEffect(() => {
+    if (!overviewMapInstance) return;
+
+    // Build a stable key from participant + location data so we skip no-op rebuilds
+    const dataKey =
+      room.participants
+        .filter((p) => p.latitude != null && p.longitude != null)
+        .map((p) => `${p._id}:${p.latitude}:${p.longitude}:${p.isAdmin}`)
+        .join(",") +
+      "|" +
+      room.locations
+        .map(
+          (l) =>
+            `${l._id}:${l.latitude}:${l.longitude}:${l.addedByAdmin}:${l.category}`,
+        )
+        .join(",");
+
+    if (dataKey === prevOverviewDataKeyRef.current) return;
+    const isFirstPopulate = prevOverviewDataKeyRef.current === "";
+    prevOverviewDataKeyRef.current = dataKey;
+
+    // Clear old markers
+    overviewLocationMarkersRef.current.forEach((m) => m.remove());
+    overviewLocationMarkersRef.current = [];
+    overviewParticipantMarkersRef.current.forEach((m) => m.remove());
+    overviewParticipantMarkersRef.current = [];
+
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasCoords = false;
+
+    // Participant markers (pulsing dots — amber for admin, cyan for others)
+    room.participants.forEach((p) => {
+      if (p.latitude != null && p.longitude != null) {
+        bounds.extend([p.longitude, p.latitude]);
+        hasCoords = true;
+
+        const el = document.createElement("div");
+        el.className =
+          "relative flex items-center justify-center w-6 h-6 z-[50]";
+        el.innerHTML = `
+          <span class="absolute inline-flex h-full w-full rounded-full ${p.isAdmin ? "bg-amber-400" : "bg-cyan-400"} opacity-75 animate-ping"></span>
+          <span class="relative inline-flex rounded-full h-3.5 w-3.5 ${p.isAdmin ? "bg-amber-500" : "bg-cyan-600"} border border-white shadow-md"></span>
+        `;
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([p.longitude, p.latitude])
+          .addTo(overviewMapInstance);
+
+        const popup = new mapboxgl.Popup({
+          offset: 10,
+          closeButton: false,
+        }).setHTML(
+          `<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${p.name}${p.isAdmin ? " (Admin)" : ""}<br/><span class="font-normal text-gray-500">${p.location}</span></div>`,
+        );
+        marker.setPopup(popup);
+
+        overviewParticipantMarkersRef.current.push(marker);
       }
-      toast.success(`Generated ${res.data.locations?.filter((l: any) => !l.addedByAdmin).length ?? 0} locations!`);
-      onRoomUpdate();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to generate locations.");
-    } finally {
-      setIsGenerating(false);
+    });
+
+    // Location markers (labeled pills — cyan for admin-added, violet for auto-generated)
+    room.locations.forEach((loc) => {
+      bounds.extend([loc.longitude, loc.latitude]);
+      hasCoords = true;
+
+      const isAutoGenerated = !loc.addedByAdmin;
+      const el = document.createElement("div");
+      const inner = document.createElement("div");
+      inner.className = `flex items-center gap-1.5 ${
+        isAutoGenerated ? "bg-violet-600" : "bg-cyan-600"
+      } text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md whitespace-nowrap cursor-pointer hover:scale-105 transition-transform`;
+      inner.innerHTML = `<span class="max-w-[120px] truncate">${loc.name}</span>`;
+      el.appendChild(inner);
+
+      const marker = new mapboxgl.Marker({ element: el })
+        .setLngLat([loc.longitude, loc.latitude])
+        .addTo(overviewMapInstance);
+
+      const categoryName = loc.category
+        ? room.categories?.find((c) => c._id === loc.category)?.name
+        : null;
+      const popup = new mapboxgl.Popup({
+        offset: 15,
+        closeButton: false,
+      }).setHTML(
+        `<div class="p-2 text-xs text-gray-900 dark:text-white">
+            <p class="font-bold">${loc.name}</p>
+            ${loc.description ? `<p class="text-gray-500 truncate max-w-[180px] mt-0.5">${loc.description}</p>` : ""}
+            ${categoryName ? `<span class="inline-block mt-1 px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-[10px] font-medium">${categoryName}</span>` : ""}
+            <span class="block mt-1 text-[10px] font-semibold ${
+              isAutoGenerated ? "text-violet-500" : "text-cyan-500"
+            }">${isAutoGenerated ? "Auto-generated" : "Admin-added"}</span>
+          </div>`,
+      );
+      marker.setPopup(popup);
+
+      overviewLocationMarkersRef.current.push(marker);
+    });
+
+    // Only fitBounds on the initial populate — preserve user's pan/zoom afterwards
+    if (isFirstPopulate && hasCoords) {
+      overviewMapInstance.fitBounds(bounds, {
+        padding: 60,
+        maxZoom: 14,
+        duration: 500,
+      });
     }
-  };
+  }, [overviewMapInstance, room.participants, room.locations, room.categories]);
 
   const adminAddedLocations = room.locations.filter((loc) => loc.addedByAdmin);
-  const autoGeneratedLocations = room.locations.filter((loc) => !loc.addedByAdmin);
+  const autoGeneratedLocations = room.locations.filter(
+    (loc) => !loc.addedByAdmin,
+  );
 
   return (
     <div className="space-y-8 bg-gray-50/50 dark:bg-gray-900/10 rounded-2xl border border-gray-200/80 dark:border-gray-800/80 p-6 shadow-xs backdrop-blur-md">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-[#0092b8]">
-            Admin Location Panel
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Add custom recommendations for voting, or auto-generate using the isochrone algorithm.
-          </p>
-        </div>
-
-        {/* Generate Locations Button */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleGenerateLocations}
-            disabled={isGenerating}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 disabled:opacity-60 text-white text-sm font-semibold shadow-lg shadow-violet-500/20 transition-all duration-200 hover:shadow-violet-500/30 hover:-translate-y-0.5 active:translate-y-0"
-          >
-            {isGenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
-            {isGenerating ? "Generating..." : "Auto-Generate Locations"}
-          </button>
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            Travel budget: <span className="font-semibold text-gray-600 dark:text-gray-300">{room.travelBudgetMinutes ?? 20} min</span>
-          </span>
-        </div>
+      <div>
+        <h2 className="text-xl font-bold text-[#0092b8]">
+          Admin Location Panel
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          Add custom venues for voting. Additional locations will be
+          auto-generated when voting starts.
+        </p>
       </div>
 
-      {/* Warnings from generation */}
-      {generateWarnings.length > 0 && (
-        <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-1.5">
-          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-semibold">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            Algorithm Notices
+      {/* Overview Map — all participants and locations */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+          <MapPin className="w-4 h-4" />
+          <h3 className="text-sm font-bold uppercase tracking-widest">
+            Overview Map
+          </h3>
+          {/* Legend */}
+          <div className="flex items-center gap-3 ml-auto text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-cyan-600" />
+              Participants
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+              Admin
+            </span>
+            {room.locations.some((l) => l.addedByAdmin) && (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-2 rounded-sm bg-cyan-600" />
+                Added
+              </span>
+            )}
+            {room.locations.some((l) => !l.addedByAdmin) && (
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-3 h-2 rounded-sm bg-violet-600" />
+                Auto
+              </span>
+            )}
           </div>
-          {generateWarnings.map((w, i) => (
-            <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6">{w}</p>
-          ))}
         </div>
-      )}
+        <div className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 h-[350px]">
+          <div
+            ref={overviewMapContainerRef}
+            className="absolute inset-0 w-full h-full"
+          />
+        </div>
+      </div>
 
       {/* Mapbox Geocoding Autocomplete Search */}
       <div className="space-y-4">
@@ -369,11 +523,17 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
                 <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
               </div>
             )}
-            <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+            <div
+              ref={mapContainerRef}
+              className="absolute inset-0 w-full h-full"
+            />
           </div>
 
           {/* Confirm details Form */}
-          <form onSubmit={handleAddLocation} className="flex flex-col justify-between space-y-4">
+          <form
+            onSubmit={handleAddLocation}
+            className="flex flex-col justify-between space-y-4"
+          >
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider">
                 Confirm Details
@@ -411,8 +571,12 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
               </div>
 
               <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                <span className="font-semibold text-gray-700 dark:text-gray-300 block">Address:</span>
-                <span className="block truncate max-w-sm">{selectedLocation.full_address}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-300 block">
+                  Address:
+                </span>
+                <span className="block truncate max-w-sm">
+                  {selectedLocation.full_address}
+                </span>
               </div>
             </div>
 
@@ -445,7 +609,9 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
       <div className="space-y-4">
         <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 uppercase tracking-widest flex items-center gap-2">
           <span>Your Added Locations ({adminAddedLocations.length})</span>
-          {updatingLocationId && <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />}
+          {updatingLocationId && (
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-500" />
+          )}
         </h3>
 
         {adminAddedLocations.length === 0 ? (
@@ -464,16 +630,21 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
                     {loc.name}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                    {loc.description || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
+                    {loc.description ||
+                      `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">Category:</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">
+                    Category:
+                  </span>
                   <select
                     value={loc.category || ""}
                     disabled={updatingLocationId === loc._id}
-                    onChange={(e) => handleCategoryChange(loc._id!, e.target.value)}
+                    onChange={(e) =>
+                      handleCategoryChange(loc._id!, e.target.value)
+                    }
                     className="px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#151515] text-xs font-semibold text-gray-700 dark:text-gray-300 focus:ring-1 focus:ring-cyan-500"
                   >
                     <option value="">None</option>
@@ -507,7 +678,11 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
 
         {autoGeneratedLocations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-250 dark:border-gray-800 p-6 text-center text-gray-400 dark:text-gray-500 text-sm">
-            Click <span className="font-semibold text-violet-500">Auto-Generate Locations </span> above to discover venues based on participants&apos; locations.
+            Locations will be{" "}
+            <span className="font-semibold text-violet-500">
+              auto-generated{" "}
+            </span>{" "}
+            when voting starts, based on participants&apos; locations.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
@@ -525,11 +700,13 @@ export default function AdminLocationManager({ room, onRoomUpdate }: Props) {
                       {loc.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                      {loc.description || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
+                      {loc.description ||
+                        `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
                     </p>
                     {loc.category && (
                       <span className="inline-block mt-1 px-2 py-0.5 rounded-full bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 text-xs font-medium">
-                        {room.categories?.find((c) => c._id === loc.category)?.name ?? loc.category}
+                        {room.categories?.find((c) => c._id === loc.category)
+                          ?.name ?? loc.category}
                       </span>
                     )}
                   </div>

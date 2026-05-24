@@ -305,7 +305,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
           ${route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
@@ -348,7 +348,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
           ${route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
@@ -398,7 +398,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
               "metro", "#a855f7", // purple
               "ferry", "#06b6d4", // cyan
               "tram", "#ef4444", // red
-              "#3b82f6", // default fallback
+              "#10b981", // default generic transit fallback (emerald green)
             ] as any,
             "line-width": [
               "match",

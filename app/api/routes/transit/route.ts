@@ -176,11 +176,160 @@ export const GET = apiHandler(async (req: NextRequest) => {
         }
       }
     } catch (error) {
-      console.error("TfNSW API failed, falling back to Mapbox Directions:", error);
+      console.error("TfNSW API failed, falling back to Targomo Route API:", error);
     }
   }
 
-  // Fallback to Mapbox Directions API if TfNSW not configured or fails
+  // Fallback 1: Targomo Transit Routing
+  const targomoKey = process.env.TARGOMO_API_KEY;
+  if (targomoKey) {
+    try {
+      const url = `https://api.targomo.com/australia/v1/route?key=${targomoKey}`;
+      let transitFrameDate: number | undefined;
+      let transitFrameTime: number | undefined;
+
+      if (dateParam) {
+        const d = new Date(dateParam);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          transitFrameDate = parseInt(`${year}${month}${day}`, 10);
+          transitFrameTime = d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+        }
+      }
+
+      const payload: any = {
+        sources: [{ id: "src", lat: Number(originLat), lng: Number(originLng) }],
+        targets: [{ id: "tgt", lat: Number(destLat), lng: Number(destLng) }],
+        travelType: "transit",
+        pathSerializer: "geojson",
+        edgeWeight: "time",
+        maxEdgeWeight: 7200, // 2 hours max travel time (API key limit)
+        simplify: 0, // request highest resolution geometries to avoid cutting across blocks
+      };
+
+      if (transitFrameDate && transitFrameTime !== undefined) {
+        payload.sources[0].tm = {
+          transit: {
+            frame: {
+              date: transitFrameDate,
+              time: transitFrameTime,
+              duration: 3600
+            },
+            maxTransfers: 5
+          }
+        };
+      }
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        
+        // Extract features (Targomo API nests them inside data.routes)
+        const rawFeatures = data.features || data.data?.features || data.routes?.[0]?.features || data.data?.routes?.[0]?.features || [];
+        
+        if (rawFeatures && rawFeatures.length > 0) {
+          const legsData = [];
+          const features = [];
+          let totalDistance = 0;
+          let totalDuration = 0;
+
+          for (const f of rawFeatures) {
+            if (f.geometry?.type === "LineString") {
+              const travelType = f.properties?.travelType?.toLowerCase() || "";
+              
+              if (travelType === "car" || travelType === "driving") {
+                continue;
+              }
+
+              let mode = "transit";
+              
+              if (travelType === "walk" || travelType === "foot" || travelType === "transfer") {
+                mode = "walking";
+              } else {
+                // Try to sniff specific GTFS routeTypes or vehicle names
+                const routeType = f.properties?.routeType;
+                const vehicleType = String(f.properties?.vehicleType || f.properties?.line || f.properties?.type || f.properties?.routeLongName || f.properties?.routeShortName || f.properties?.tripHeadSign || "").toLowerCase();
+
+                if (routeType !== undefined) {
+                  // GTFS standard route types
+                  if (routeType === 0) mode = "tram";
+                  else if (routeType === 1) mode = "metro";
+                  else if (routeType === 2) mode = "train";
+                  else if (routeType === 3) mode = "bus";
+                  else if (routeType === 4) mode = "ferry";
+                } else if (vehicleType) {
+                  // String matching as a fallback
+                  if (vehicleType.includes("train") || vehicleType.includes("rail")) mode = "train";
+                  else if (vehicleType.includes("bus")) mode = "bus";
+                  else if (vehicleType.includes("tram") || vehicleType.includes("light")) mode = "tram";
+                  else if (vehicleType.includes("ferry") || vehicleType.includes("boat")) mode = "ferry";
+                  else if (vehicleType.includes("subway") || vehicleType.includes("metro")) mode = "metro";
+                }
+              }
+              
+              const durationSec = f.properties?.travelTime || 0;
+              const distanceMeters = f.properties?.length || 0;
+
+              totalDistance += distanceMeters;
+              totalDuration += durationSec;
+
+              let coords = f.geometry.coordinates;
+              if (coords && coords.length > 0 && Array.isArray(coords[0])) {
+                // If the first coordinate value is huge, it's EPSG:3857 Web Mercator
+                if (Math.abs(coords[0][0]) > 180) {
+                  coords = coords.map((c: any) => {
+                    const lng = (c[0] / 20037508.34) * 180;
+                    let lat = (c[1] / 20037508.34) * 180;
+                    lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((lat * Math.PI) / 180)) - Math.PI / 2);
+                    return [lng, lat];
+                  });
+                }
+              }
+
+              legsData.push({
+                mode,
+                duration: durationSec,
+                distance: distanceMeters,
+                coordinates: coords,
+              });
+
+              features.push({
+                type: "Feature",
+                properties: { mode },
+                geometry: {
+                  ...f.geometry,
+                  coordinates: coords
+                },
+              });
+            }
+          }
+
+          if (features.length > 0) {
+            return NextResponse.json({
+              distance: totalDistance,
+              duration: totalDuration,
+              legs: legsData,
+              geometry: {
+                type: "FeatureCollection",
+                features,
+              },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Targomo Route API failed:", error);
+    }
+  }
+
+  // Fallback 2: Mapbox Directions API if TfNSW and Google are not configured or fail
   try {
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?access_token=${mapboxToken}&geometries=geojson`;

@@ -8,7 +8,7 @@ import AdminLocationManager from "./AdminLocationManager";
 import DietarySummary from "./DietarySummary";
 import { getRoom } from "@/lib/rooms";
 import { useState, useEffect, useCallback } from "react";
-import { Users, Calendar } from "lucide-react";
+import { Users, Calendar, Clock } from "lucide-react";
 
 const POLL_INTERVAL_MS = 5000; // 5 seconds
 
@@ -84,12 +84,22 @@ export default function LobbyView({
           <div className="flex items-center gap-1.5 text-sm text-cyan-600 dark:text-cyan-400 font-medium">
             <Calendar className="w-4 h-4" />
             <span>
-              {new Date(room.date).toLocaleDateString("en-AU", {
+              {new Date(room.date).toLocaleString("en-AU", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
                 year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
               })}
+            </span>
+          </div>
+        )}
+        {room.travelBudgetMinutes && (
+          <div className="flex items-center gap-1.5 text-sm text-orange-600 dark:text-orange-400 font-medium">
+            <Clock className="w-4 h-4" />
+            <span>
+              Max Travel Time: {room.travelBudgetMinutes} minutes
             </span>
           </div>
         )}

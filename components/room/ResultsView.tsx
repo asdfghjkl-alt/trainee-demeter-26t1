@@ -224,7 +224,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
           ${activeOrigin ? (route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
@@ -397,7 +397,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
           ${activeOrigin ? (route ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km ${isTransit ? "walk" : ""}</span>
+              <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
@@ -446,7 +446,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
               "metro", "#a855f7",
               "ferry", "#06b6d4",
               "tram", "#ef4444",
-              "#3b82f6",
+              "#10b981",
             ] as unknown as mapboxgl.ExpressionSpecification,
             "line-width": [
               "match",

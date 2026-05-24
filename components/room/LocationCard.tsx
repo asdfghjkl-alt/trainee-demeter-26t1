@@ -58,7 +58,7 @@ export default function LocationCard({
     if (!routeDetails) return null;
     const km = routeDetails.distance / 1000;
     const mins = Math.round(routeDetails.duration / 60);
-    return `${km.toFixed(1)} km ${isTransit ? "walk " : ""}(${mins} mins)`;
+    return `${km.toFixed(1)} km (${mins} mins)`;
   };
 
   const distanceStr = getDistanceString();
