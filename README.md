@@ -60,7 +60,7 @@ The public transit routing features query the official **TfNSW Trip Planner API*
 4. Retrieve your generated key from the application dashboard.
 5. Set `TFNSW_API_KEY` in your `.env` file to this key. 
 
-*(If this key is missing or invalid, the app will gracefully fall back to road-driving routes via Mapbox Directions).*
+*(Note: Because TfNSW is a state-level agency, true public transit routing and map-drawn transit lines will only work for locations within New South Wales, Australia. If you use the app outside of NSW, or if the key is missing/invalid, the app will gracefully fall back to road-driving routes via Mapbox Directions).*
 
 ### 5. Getting a Targomo API Key (Transit Isochrones)
 
