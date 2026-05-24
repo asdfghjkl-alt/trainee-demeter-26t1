@@ -445,6 +445,43 @@ function formatTfNSWTime(d: Date): string {
 }
 
 // ---------------------------------------------------------------------------
+// Step 5c – Travel time: Targomo (transit fallback)
+// ---------------------------------------------------------------------------
+
+async function getTravelTimeTargomo(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  targomoKey: string,
+): Promise<number | null> {
+  // Hardcoded to australia endpoint for now to match the isochrone setup
+  const url = `https://api.targomo.com/australia/v1/time?key=${targomoKey}`;
+  const payload = {
+    sources: [{ id: "src", lat: from.lat, lng: from.lng }],
+    targets: [{ id: "tgt", lat: to.lat, lng: to.lng }],
+    travelType: "transit",
+    maxEdgeWeight: 7200, // 2 hours max search
+    serializer: "json",
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const targets = data.data?.[0]?.targets ?? [];
+    if (targets.length === 0) return null;
+
+    const travelTimeSeconds = targets[0].travelTime;
+    return travelTimeSeconds ? travelTimeSeconds / 60 : null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Step 5 – Build travel-time matrix and score candidates
 // ---------------------------------------------------------------------------
 
@@ -461,6 +498,7 @@ export async function scoreCandidates(
   meetingDirection: "to-venue" | "from-venue",
   date?: Date,
   tfnswKey?: string,
+  targomoKey?: string,
 ): Promise<ScoredLocation[]> {
   const scored: ScoredLocation[] = await Promise.all(
     candidates.map(async (c) => {
@@ -480,7 +518,12 @@ export async function scoreCandidates(
             );
           }
 
-          // Fallback: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW fails
+          // Fallback 1: Targomo Transit Routing
+          if (minutes == null && p.transportationMode === "transit" && targomoKey) {
+            minutes = await getTravelTimeTargomo(origin, destination, targomoKey);
+          }
+
+          // Fallback 2: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW & Targomo fail
           if (minutes == null) {
             if (p.transportationMode === "transit") {
               const driveMinutes = await getTravelTimeMapbox(
@@ -701,7 +744,7 @@ export async function generateLocations(opts: {
   // --- Step 5: Score -------------------------------------------------------
   // Score the top 30 raw candidates to limit API calls while capturing a diverse pool
   const toScore = shuffledCandidates.slice(0, 30);
-  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, date, tfnswKey);
+  const scored = await scoreCandidates(toScore, validParticipants, mapboxToken, meetingDirection, date, tfnswKey, targomoKey);
 
   return {
     locations: scored.slice(0, topN),
