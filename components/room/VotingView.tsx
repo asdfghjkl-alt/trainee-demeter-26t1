@@ -1,9 +1,29 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import type { Room, Location, VotePayload, Participant, TransportationMode } from "@/types/room";
+import type {
+  Room,
+  Location,
+  VotePayload,
+  Participant,
+  TransportationMode,
+} from "@/types/room";
 import LocationCard from "./LocationCard";
-import { Send, X, Trophy, Loader2, Car, Train, PersonStanding, Bike, Bus, MapPin, RefreshCw, AlertTriangle, ArrowDownUp } from "lucide-react";
+import {
+  Send,
+  X,
+  Trophy,
+  Loader2,
+  Car,
+  Train,
+  PersonStanding,
+  Bike,
+  Bus,
+  MapPin,
+  RefreshCw,
+  AlertTriangle,
+  ArrowDownUp,
+} from "lucide-react";
 import api from "@/lib/axios";
 import toast from "react-hot-toast";
 import mapboxgl from "mapbox-gl";
@@ -30,12 +50,16 @@ interface Props {
   onVoteSubmitted?: () => void;
 }
 
-export default function VotingView({ room, currentParticipantId, onVotingClosed, onVoteSubmitted }: Props) {
-
+export default function VotingView({
+  room,
+  currentParticipantId,
+  onVotingClosed,
+  onVoteSubmitted,
+}: Props) {
   // ─── State ───────────────────────────────────────────────────────────
 
   const [rankedLocations, setRankedLocations] = useState<Location[]>(
-    room.locations
+    room.locations,
   );
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -69,22 +93,37 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClosingVote, setIsClosingVote] = useState(false);
 
-  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [gpsCoords, setGpsCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [useLiveGPS, setUseLiveGPS] = useState(false);
 
-  const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
+  const currentParticipant = room.participants.find(
+    (p) => p._id === currentParticipantId,
+  );
 
   // Active origin coordinates (use live GPS if toggled & active, otherwise fall back to geocoded joined suburb)
   const activeOrigin = useMemo(() => {
     return useLiveGPS && gpsCoords
       ? gpsCoords
-      : (currentParticipant?.latitude && currentParticipant?.longitude
-        ? { latitude: currentParticipant.latitude, longitude: currentParticipant.longitude }
-        : gpsCoords); // fallback to GPS if no suburb coordinates
-  }, [useLiveGPS, gpsCoords, currentParticipant?.latitude, currentParticipant?.longitude]);
+      : currentParticipant?.latitude && currentParticipant?.longitude
+        ? {
+            latitude: currentParticipant.latitude,
+            longitude: currentParticipant.longitude,
+          }
+        : gpsCoords; // fallback to GPS if no suburb coordinates
+  }, [
+    useLiveGPS,
+    gpsCoords,
+    currentParticipant?.latitude,
+    currentParticipant?.longitude,
+  ]);
 
   // Serialized locations key to prevent duplicate route queries when unrelated room updates happen
-  const locationsKey = room.locations.map((l) => `${l._id}-${l.latitude}-${l.longitude}`).join(",");
+  const locationsKey = room.locations
+    .map((l) => `${l._id}-${l.latitude}-${l.longitude}`)
+    .join(",");
 
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const prevOriginRef = useRef<string | null>(null);
@@ -95,7 +134,9 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     duration: number;
     geometry?: any;
   }
-  const [routeDistances, setRouteDistances] = useState<{ [locationId: string]: RouteDetails }>({});
+  const [routeDistances, setRouteDistances] = useState<{
+    [locationId: string]: RouteDetails;
+  }>({});
 
   const mapToMapboxProfile = (mode?: string): string => {
     switch (mode) {
@@ -125,9 +166,11 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         },
         (error) => {
           console.warn("Geolocation permission denied or error:", error);
-          toast.error("Could not access GPS. Please check browser permissions.");
+          toast.error(
+            "Could not access GPS. Please check browser permissions.",
+          );
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true },
       );
     } else {
       toast.error("Geolocation is not supported by your browser.");
@@ -145,12 +188,15 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       if (!token) return;
 
-      const profile = mapToMapboxProfile(currentParticipant?.transportationMode);
+      const profile = mapToMapboxProfile(
+        currentParticipant?.transportationMode,
+      );
       const newDistances: { [id: string]: RouteDetails } = {};
 
       const promises = room.locations.map(async (loc) => {
         try {
-          const isTransit = currentParticipant?.transportationMode === "transit";
+          const isTransit =
+            currentParticipant?.transportationMode === "transit";
           const isFromVenue = room.meetingDirection === "from-venue";
           const startLat = isFromVenue ? loc.latitude : activeOrigin.latitude;
           const startLng = isFromVenue ? loc.longitude : activeOrigin.longitude;
@@ -201,13 +247,21 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     };
 
     fetchRoutes();
-  }, [activeOrigin, locationsKey, currentParticipant?.transportationMode, room.date, room.meetingDirection]);
+  }, [
+    activeOrigin,
+    locationsKey,
+    currentParticipant?.transportationMode,
+    room.date,
+    room.meetingDirection,
+  ]);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map | null>(null);
   const markersRef = useRef<{ [id: string]: mapboxgl.Marker }>({});
   const otherParticipantsMarkersRef = useRef<mapboxgl.Marker[]>([]);
-  const [selectedMapLocationId, setSelectedMapLocationId] = useState<string | null>(null);
+  const [selectedMapLocationId, setSelectedMapLocationId] = useState<
+    string | null
+  >(null);
   const activePopupRef = useRef<mapboxgl.Popup | null>(null);
 
   // Initialize persistent Mapbox map
@@ -250,13 +304,22 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
   // Fit map bounds to include all locations and user starting location (runs once on load or when structurally changed)
   useEffect(() => {
-    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+    if (
+      !mapInstance ||
+      !mapInstance.getCanvasContainer ||
+      !mapInstance.getCanvasContainer()
+    )
+      return;
 
-    const originKey = activeOrigin ? `${activeOrigin.latitude},${activeOrigin.longitude}` : null;
+    const originKey = activeOrigin
+      ? `${activeOrigin.latitude},${activeOrigin.longitude}`
+      : null;
     const locationsCount = room.locations.length;
 
     // Only run fitBounds if the map is freshly loaded, or if the origin or locations count actually changed
-    const hasChanged = originKey !== prevOriginRef.current || locationsCount !== prevLocationsCountRef.current;
+    const hasChanged =
+      originKey !== prevOriginRef.current ||
+      locationsCount !== prevLocationsCountRef.current;
     if (!hasChanged) return;
 
     const bounds = new mapboxgl.LngLatBounds();
@@ -281,10 +344,19 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
   // Show details of a location on the map using a popup, travel distance/duration details, and focus center
   const showLocationDetails = (location: Location) => {
-    console.log("showLocationDetails called for:", location.name, "mapInstance is present:", !!mapInstance);
+    console.log(
+      "showLocationDetails called for:",
+      location.name,
+      "mapInstance is present:",
+      !!mapInstance,
+    );
     setSelectedMapLocationId(location._id || null);
 
-    if (mapInstance && mapInstance.getCanvasContainer && mapInstance.getCanvasContainer()) {
+    if (
+      mapInstance &&
+      mapInstance.getCanvasContainer &&
+      mapInstance.getCanvasContainer()
+    ) {
       console.log("Executing easeTo for:", location.name);
       mapInstance.easeTo({
         center: [location.longitude, location.latitude],
@@ -300,20 +372,24 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
       const isTransit = currentParticipant?.transportationMode === "transit";
       const popupHtml = `
-        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+        <div class="p-2 text-xs text-gray-900 dark:text-white">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
-          ${route ? `
+          ${
+            route
+              ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
               <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : `
+          `
+              : `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
               <span>Calculating route...</span>
             </div>
-          `}
+          `
+          }
         </div>
       `;
 
@@ -329,7 +405,9 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
   // Sync map route and popup details when routeDistances changes for the selected location
   useEffect(() => {
     if (!mapInstance || !selectedMapLocationId) return;
-    const location = room.locations.find((l) => l._id === selectedMapLocationId);
+    const location = room.locations.find(
+      (l) => l._id === selectedMapLocationId,
+    );
     if (!location) return;
 
     // Bring selected marker to front
@@ -339,24 +417,27 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
     const route = routeDistances[selectedMapLocationId];
 
-    const isTransit = currentParticipant?.transportationMode === "transit";
     // Update active popup content dynamically if it is open
     if (activePopupRef.current && activePopupRef.current.isOpen()) {
       const popupHtml = `
-        <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
+        <div class="p-2 text-xs text-gray-900 dark:text-white">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
-          ${route ? `
+          ${
+            route
+              ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
               <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : `
+          `
+              : `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
               <span>Calculating route...</span>
             </div>
-          `}
+          `
+          }
         </div>
       `;
       activePopupRef.current.setHTML(popupHtml);
@@ -364,16 +445,19 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
     // Update route geometry on map
     if (route?.geometry) {
-      const geojson = route.geometry.type === "FeatureCollection"
-        ? route.geometry
-        : {
-          type: "Feature" as const,
-          properties: {},
-          geometry: route.geometry,
-        };
+      const geojson =
+        route.geometry.type === "FeatureCollection"
+          ? route.geometry
+          : {
+              type: "Feature" as const,
+              properties: {},
+              geometry: route.geometry,
+            };
 
       if (mapInstance.getSource("route")) {
-        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson);
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(
+          geojson,
+        );
       } else {
         mapInstance.addSource("route", {
           type: "geojson",
@@ -392,23 +476,35 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
             "line-color": [
               "match",
               ["coalesce", ["get", "mode"], "transit"],
-              "walking", "#3b82f6", // blue
-              "train", "#f97316", // orange
-              "bus", "#eab308", // yellow
-              "metro", "#a855f7", // purple
-              "ferry", "#06b6d4", // cyan
-              "tram", "#ef4444", // red
+              "walking",
+              "#3b82f6", // blue
+              "train",
+              "#f97316", // orange
+              "bus",
+              "#eab308", // yellow
+              "metro",
+              "#a855f7", // purple
+              "ferry",
+              "#06b6d4", // cyan
+              "tram",
+              "#ef4444", // red
               "#10b981", // default generic transit fallback (emerald green)
             ] as any,
             "line-width": [
               "match",
               ["coalesce", ["get", "mode"], "transit"],
-              "walking", 3,
-              "train", 6,
-              "bus", 5,
-              "metro", 6,
-              "ferry", 5,
-              "tram", 5,
+              "walking",
+              3,
+              "train",
+              6,
+              "bus",
+              5,
+              "metro",
+              6,
+              "ferry",
+              5,
+              "tram",
+              5,
               5,
             ] as any,
             "line-opacity": 0.85,
@@ -431,12 +527,17 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
   // Sync labeled markers with rankedLocations ordering & activeOrigin (DOM nodes only created/destroyed when list changes)
   useEffect(() => {
-    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+    if (
+      !mapInstance ||
+      !mapInstance.getCanvasContainer ||
+      !mapInstance.getCanvasContainer()
+    )
+      return;
 
     // Clear old markers
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
-    
+
     otherParticipantsMarkersRef.current.forEach((m) => m.remove());
     otherParticipantsMarkersRef.current = [];
 
@@ -451,7 +552,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     // Render new markers
     rankedLocations.forEach((location, idx) => {
       const rank = idx + 1;
-      
+
       const key = `${location.latitude.toFixed(4)},${location.longitude.toFixed(4)}`;
       const totalAtCoord = coordsCount[key];
       const seenCount = coordsSeen[key] || 0;
@@ -465,13 +566,20 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       const el = document.createElement("div");
       el.style.zIndex = "1";
 
+      const isAutoGenerated = !location.addedByAdmin;
+      const baseBgColor = isAutoGenerated ? "bg-violet-600" : "bg-cyan-600";
+      const hoverBgColor = isAutoGenerated ? "hover:bg-violet-500" : "hover:bg-cyan-500";
+      const rankTextColor = isAutoGenerated ? "text-violet-600" : "text-cyan-600";
+
       // Custom inner wrapper to keep Mapbox's classes intact on the outer container
       const inner = document.createElement("div");
-      inner.className = "marker-inner flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-cyan-500 transition-all duration-150 whitespace-nowrap pointer-events-auto";
+      inner.className =
+        `marker-inner flex items-center gap-1.5 ${baseBgColor} text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer ${hoverBgColor} transition-all duration-150 whitespace-nowrap pointer-events-auto`;
       inner.setAttribute("data-rank", rank.toString());
+      inner.setAttribute("data-autogenerated", isAutoGenerated.toString());
 
       inner.innerHTML = `
-        <span class="w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0 rank-span">${rank}</span>
+        <span class="w-4 h-4 flex items-center justify-center rounded-full bg-white ${rankTextColor} text-[10px] font-extrabold shrink-0 rank-span">${rank}</span>
         <span class="max-w-[120px] truncate">${location.name}</span>
       `;
       el.appendChild(inner);
@@ -481,7 +589,10 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
         .addTo(mapInstance);
 
       const handleInteraction = (e: Event) => {
-        console.log(`Marker interaction [${e.type}] triggered for:`, location.name);
+        console.log(
+          `Marker interaction [${e.type}] triggered for:`,
+          location.name,
+        );
         e.stopPropagation();
         showLocationDetailsRef.current(location);
       };
@@ -498,57 +609,63 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
       userMarkerRef.current.remove();
       userMarkerRef.current = null;
     }
-    if (activeOrigin) {
-      const el = document.createElement("div");
-      el.className = "relative flex items-center justify-center w-6 h-6 z-[60]";
-      el.innerHTML = `
-        <span class="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping"></span>
-        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-600 border border-white shadow-md"></span>
-      `;
-
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([activeOrigin.longitude, activeOrigin.latitude])
-        .addTo(mapInstance);
-
-      const isFromVenue = room.meetingDirection === "from-venue";
-      const originLabel = useLiveGPS
-        ? (isFromVenue ? "Your Return GPS Location" : "Your GPS Location")
-        : (isFromVenue
-          ? `Your Return Suburb: ${currentParticipant?.location || "Destination"}`
-          : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`);
-
-      const popup = new mapboxgl.Popup({ offset: 10, closeButton: false })
-        .setHTML(`<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${originLabel}</div>`);
-
-      marker.setPopup(popup);
-      userMarkerRef.current = marker;
-    }
-
-    // Render other participants' markers
+    // Participant markers (pulsing dots — amber for admin, cyan for others)
     room.participants.forEach((p) => {
-      if (p._id !== currentParticipant?._id && p.latitude != null && p.longitude != null) {
+      // Use activeOrigin for the current user to support live GPS toggling, otherwise use geocoded coords
+      const isCurrentUser = p._id === currentParticipant?._id;
+      const lat = isCurrentUser && activeOrigin ? activeOrigin.latitude : p.latitude;
+      const lng = isCurrentUser && activeOrigin ? activeOrigin.longitude : p.longitude;
+
+      if (lat != null && lng != null) {
         const el = document.createElement("div");
-        el.className = "relative flex items-center justify-center w-4 h-4 z-[50]";
+        el.className = "relative flex items-center justify-center w-6 h-6 z-[50]";
+        // Make the current user's dot stand out slightly more by lifting it to z-[60]
+        if (isCurrentUser) el.style.zIndex = "60";
+        
         el.innerHTML = `
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-400 dark:bg-gray-500 border border-white dark:border-gray-800 shadow-sm"></span>
+          <span class="absolute inline-flex h-full w-full rounded-full ${p.isAdmin ? "bg-amber-400" : "bg-cyan-400"} opacity-75 animate-ping"></span>
+          <span class="relative inline-flex rounded-full h-3.5 w-3.5 ${p.isAdmin ? "bg-amber-500" : "bg-cyan-600"} border border-white shadow-md"></span>
         `;
-        
+
         const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([p.longitude, p.latitude])
+          .setLngLat([lng, lat])
           .addTo(mapInstance);
-          
+
         const isFromVenue = room.meetingDirection === "from-venue";
-        const labelText = isFromVenue ? `${p.name}'s Return Suburb` : `${p.name}'s Suburb`;
+        let labelText = `${p.name}${p.isAdmin ? " (Admin)" : ""}<br/><span class="font-normal text-gray-500">${p.location || "Unknown Suburb"}</span>`;
         
-        const popup = new mapboxgl.Popup({ offset: 6, closeButton: false })
-          .setHTML(`<div class="p-1 text-[9px] font-medium text-gray-500 dark:text-gray-400">${labelText}</div>`);
-          
+        if (isCurrentUser) {
+          const originLabel = useLiveGPS
+            ? isFromVenue
+              ? "Your Return GPS Location"
+              : "Your GPS Location"
+            : isFromVenue
+              ? `Your Return Suburb: ${p.location || "Destination"}`
+              : `Your Suburb: ${p.location || "Starting Point"}`;
+          labelText = originLabel;
+          userMarkerRef.current = marker;
+        } else {
+          otherParticipantsMarkersRef.current.push(marker);
+        }
+
+        const popup = new mapboxgl.Popup({
+          offset: 10,
+          closeButton: false,
+        }).setHTML(
+          `<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${labelText}</div>`,
+        );
+
         marker.setPopup(popup);
-        otherParticipantsMarkersRef.current.push(marker);
       }
     });
-
-  }, [mapInstance, rankedLocations, activeOrigin, room.meetingDirection, room.participants, currentParticipant]);
+  }, [
+    mapInstance,
+    rankedLocations,
+    activeOrigin,
+    room.meetingDirection,
+    room.participants,
+    currentParticipant,
+  ]);
 
   // Update marker selection classes in place without destroying/recreating DOM elements
   useEffect(() => {
@@ -559,17 +676,24 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
       const isSelected = id === selectedMapLocationId;
       const rank = inner.getAttribute("data-rank") || "1";
+      const isAutoGenerated = inner.getAttribute("data-autogenerated") === "true";
+      
+      const baseBgColor = isAutoGenerated ? "bg-violet-600" : "bg-cyan-600";
+      const hoverBgColor = isAutoGenerated ? "hover:bg-violet-500" : "hover:bg-cyan-500";
+      const rankTextColor = isAutoGenerated ? "text-violet-600" : "text-cyan-600";
 
       inner.className = isSelected
         ? "marker-inner flex items-center gap-1.5 bg-amber-500 text-white font-bold text-xs px-2.5 py-1 rounded-full border-2 border-white dark:border-gray-900 shadow-2xl scale-110 z-50 ring-4 ring-amber-300 dark:ring-amber-900/50 transition-all duration-150 whitespace-nowrap cursor-pointer pointer-events-auto"
-        : "marker-inner flex items-center gap-1.5 bg-cyan-600 text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer hover:bg-cyan-500 transition-all duration-150 whitespace-nowrap pointer-events-auto";
+        : `marker-inner flex items-center gap-1.5 ${baseBgColor} text-white font-semibold text-xs px-2.5 py-1 rounded-full border border-white dark:border-gray-900 shadow-md cursor-pointer ${hoverBgColor} transition-all duration-150 whitespace-nowrap pointer-events-auto`;
 
       const rankSpan = inner.querySelector(".rank-span");
       if (rankSpan) {
         if (isSelected) {
-          rankSpan.className = "w-4 h-4 flex items-center justify-center rounded-full bg-white text-amber-600 text-[10px] font-extrabold shrink-0 rank-span";
+          rankSpan.className =
+            "w-4 h-4 flex items-center justify-center rounded-full bg-white text-amber-600 text-[10px] font-extrabold shrink-0 rank-span";
         } else {
-          rankSpan.className = "w-4 h-4 flex items-center justify-center rounded-full bg-white text-cyan-600 text-[10px] font-extrabold shrink-0 rank-span";
+          rankSpan.className =
+            `w-4 h-4 flex items-center justify-center rounded-full bg-white ${rankTextColor} text-[10px] font-extrabold shrink-0 rank-span`;
         }
       }
     });
@@ -592,7 +716,9 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
     });
   };
 
-  const isAdmin = room.participants.find((p) => p._id === currentParticipantId)?.isAdmin === true;
+  const isAdmin =
+    room.participants.find((p) => p._id === currentParticipantId)?.isAdmin ===
+    true;
 
   // ─── Drag and drop handlers ───────────────────────────────────────────
 
@@ -615,7 +741,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 
       const updated = [...prev];
       const [removed] = updated.splice(draggedIndex, 1); // remove dragged item
-      updated.splice(targetIndex, 0, removed);           // insert at target position
+      updated.splice(targetIndex, 0, removed); // insert at target position
       return updated;
     });
   };
@@ -687,7 +813,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
         {/* Left column: Voting details / List */}
         <div className="lg:col-span-5 space-y-6">
           <VotingHeader room={room} currentParticipant={currentParticipant} />
@@ -699,7 +824,10 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
                 Algorithm Notice
               </div>
               {room.algorithmNotices.map((notice, i) => (
-                <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                <p
+                  key={i}
+                  className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed"
+                >
                   {notice}
                 </p>
               ))}
@@ -741,9 +869,12 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
               <div className="flex flex-col gap-2 p-3.5 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    {room.meetingDirection === "from-venue" ? "Return Destination (Home)" : "Starting Location"}
+                    {room.meetingDirection === "from-venue"
+                      ? "Return Destination (Home)"
+                      : "Starting Location"}
                   </span>
-                  {currentParticipant?.latitude && currentParticipant?.longitude ? (
+                  {currentParticipant?.latitude &&
+                  currentParticipant?.longitude ? (
                     <button
                       onClick={() => {
                         if (useLiveGPS) {
@@ -784,7 +915,8 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
                       <span className="truncate max-w-[240px]">
                         {currentParticipant?.location || "No suburb selected"}
                       </span>
-                      {(!currentParticipant?.latitude || !currentParticipant?.longitude) && (
+                      {(!currentParticipant?.latitude ||
+                        !currentParticipant?.longitude) && (
                         <span className="text-xs text-amber-600 dark:text-amber-400 font-medium shrink-0">
                           (un-geocoded)
                         </span>
@@ -803,7 +935,7 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
                 <div className="space-y-3">
                   {rankedLocations.map((location, index) => {
                     const category = room.categories.find(
-                      (c) => c._id === location.category
+                      (c) => c._id === location.category,
                     );
                     return (
                       <LocationCard
@@ -818,7 +950,9 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
                         onDrop={handleDrop}
                         onViewMap={() => handleFlyTo(location)}
                         routeDetails={routeDistances[location._id!]}
-                        isTransit={currentParticipant?.transportationMode === "transit"}
+                        isTransit={
+                          currentParticipant?.transportationMode === "transit"
+                        }
                         onMoveUp={() => handleMoveLocation(index, "up")}
                         onMoveDown={() => handleMoveLocation(index, "down")}
                         isFirst={index === 0}
@@ -871,36 +1005,53 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
               </span>
             </div>
             <div className="relative h-[400px] lg:h-[600px] w-full bg-gray-100 dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
-              <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+              <div
+                ref={mapContainerRef}
+                className="absolute inset-0 w-full h-full"
+              />
 
               {/* Transit Legend Overlay */}
               {currentParticipant?.transportationMode === "transit" && (
                 <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-10 text-[10px] space-y-2 pointer-events-none select-none max-w-[150px]">
-                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">Transit Legend</p>
+                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">
+                    Transit Legend
+                  </p>
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#a855f7]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Metro</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Metro
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#f97316]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Train</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Train
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#eab308]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bus</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Bus
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#06b6d4]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Ferry</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Ferry
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#ef4444]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Light Rail
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#3b82f6]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Walking
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -908,7 +1059,6 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -917,7 +1067,13 @@ export default function VotingView({ room, currentParticipantId, onVotingClosed,
 // ─── Helper components ──────────────────────────────────────────────────
 
 // The room name + voting status header
-function VotingHeader({ room, currentParticipant }: { room: Room; currentParticipant?: Participant }) {
+function VotingHeader({
+  room,
+  currentParticipant,
+}: {
+  room: Room;
+  currentParticipant?: Participant;
+}) {
   const formattedDate = useMemo(() => {
     if (!room.date) return null;
     try {
@@ -942,9 +1098,15 @@ function VotingHeader({ room, currentParticipant }: { room: Room; currentPartici
               Scheduled for: {formattedDate}
             </span>
           )}
-          {formattedDate && <span className="hidden sm:inline text-gray-300 dark:text-gray-750">|</span>}
+          {formattedDate && (
+            <span className="hidden sm:inline text-gray-300 dark:text-gray-750">
+              |
+            </span>
+          )}
           <span className="font-semibold text-blue-600 dark:text-blue-400">
-            {room.meetingDirection === "from-venue" ? "Direction: Travel Home from Venue" : "Direction: Commute to Venue"}
+            {room.meetingDirection === "from-venue"
+              ? "Direction: Travel Home from Venue"
+              : "Direction: Commute to Venue"}
           </span>
         </div>
         <p className="text-sm text-gray-500 dark:text-gray-400 pt-1">

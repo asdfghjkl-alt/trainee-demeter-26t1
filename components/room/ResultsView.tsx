@@ -314,62 +314,55 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
       hasCoords = true;
     });
 
-    if (userMarkerRef.current) {
-      userMarkerRef.current.remove();
-      userMarkerRef.current = null;
-    }
-    if (activeOrigin) {
-      const el = document.createElement("div");
-      el.className = "relative flex items-center justify-center w-6 h-6 z-[60]";
-      el.innerHTML = `
-        <span class="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75 animate-ping"></span>
-        <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-cyan-600 border border-white shadow-md"></span>
-      `;
-      const marker = new mapboxgl.Marker({ element: el })
-        .setLngLat([activeOrigin.longitude, activeOrigin.latitude])
-        .addTo(mapInstance);
+    // Participant markers (pulsing dots — amber for admin, cyan for others)
+    room.participants.forEach((p) => {
+      const isCurrentUser = p._id === currentParticipant?._id;
+      const lat = isCurrentUser && activeOrigin ? activeOrigin.latitude : p.latitude;
+      const lng = isCurrentUser && activeOrigin ? activeOrigin.longitude : p.longitude;
 
-      const isFromVenue = room.meetingDirection === "from-venue";
-      const originLabel = isFromVenue
-        ? `Your Return Suburb: ${currentParticipant?.location || "Destination"}`
-        : `Your Suburb: ${currentParticipant?.location || "Starting Point"}`;
-      const popup = new mapboxgl.Popup({ offset: 10, closeButton: false }).setHTML(
-        `<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${escapeHtml(originLabel)}</div>`,
-      );
-      marker.setPopup(popup);
-      userMarkerRef.current = marker;
+      if (lat != null && lng != null) {
+        const el = document.createElement("div");
+        el.className = "relative flex items-center justify-center w-6 h-6 z-[50]";
+        if (isCurrentUser) el.style.zIndex = "60";
+        
+        el.innerHTML = `
+          <span class="absolute inline-flex h-full w-full rounded-full ${p.isAdmin ? "bg-amber-400" : "bg-cyan-400"} opacity-75 animate-ping"></span>
+          <span class="relative inline-flex rounded-full h-3.5 w-3.5 ${p.isAdmin ? "bg-amber-500" : "bg-cyan-600"} border border-white shadow-md"></span>
+        `;
 
-      bounds.extend([activeOrigin.longitude, activeOrigin.latitude]);
-      hasCoords = true;
-    }
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .addTo(mapInstance);
+
+        const isFromVenue = room.meetingDirection === "from-venue";
+        let labelText = `${escapeHtml(p.name)}${p.isAdmin ? " (Admin)" : ""}<br/><span class="font-normal text-gray-500">${escapeHtml(p.location || "Unknown Suburb")}</span>`;
+        
+        if (isCurrentUser) {
+          const originLabel = isFromVenue
+            ? `Your Return Suburb: ${p.location || "Destination"}`
+            : `Your Suburb: ${p.location || "Starting Point"}`;
+          labelText = escapeHtml(originLabel);
+          userMarkerRef.current = marker;
+          bounds.extend([lng, lat]);
+          hasCoords = true;
+        } else {
+          otherParticipantsMarkersRef.current.push(marker);
+        }
+
+        const popup = new mapboxgl.Popup({
+          offset: 10,
+          closeButton: false,
+        }).setHTML(
+          `<div class="p-1.5 text-[10px] font-bold text-gray-700 dark:text-gray-300">${labelText}</div>`,
+        );
+
+        marker.setPopup(popup);
+      }
+    });
 
     if (hasCoords) {
       mapInstance.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 0 });
     }
-
-    // Render other participants' markers
-    room.participants.forEach((p) => {
-      if (p._id !== currentParticipant?._id && p.latitude != null && p.longitude != null) {
-        const el = document.createElement("div");
-        el.className = "relative flex items-center justify-center w-4 h-4 z-[50]";
-        el.innerHTML = `
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-400 dark:bg-gray-500 border border-white dark:border-gray-800 shadow-sm"></span>
-        `;
-        
-        const marker = new mapboxgl.Marker({ element: el })
-          .setLngLat([p.longitude, p.latitude])
-          .addTo(mapInstance);
-          
-        const isFromVenue = room.meetingDirection === "from-venue";
-        const labelText = isFromVenue ? `${p.name}'s Return Suburb` : `${p.name}'s Suburb`;
-        
-        const popup = new mapboxgl.Popup({ offset: 6, closeButton: false })
-          .setHTML(`<div class="p-1 text-[9px] font-medium text-gray-500 dark:text-gray-400">${escapeHtml(labelText)}</div>`);
-          
-        marker.setPopup(popup);
-        otherParticipantsMarkersRef.current.push(marker);
-      }
-    });
 
     // Auto-open the single winner so the route is shown without requiring a click
     if (winners.length === 1) {
