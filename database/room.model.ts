@@ -40,6 +40,7 @@ export interface IRoom extends Document {
   voteBreakdown?: Record<string, number>;
   travelBudgetMinutes?: number; // Isochrone time budget per participant (1–120, default 20)
   algorithmNotices?: string[];
+  hasGeneratedLocations?: boolean;
   createdAt: Date; // The time when the room was created
 }
 
@@ -97,6 +98,7 @@ const roomSchema = new Schema<IRoom>({
   voteBreakdown: { type: Schema.Types.Map, of: Number, default: {} },
   travelBudgetMinutes: { type: Number, default: 20, min: 1, max: 120 },
   algorithmNotices: [{ type: String }],
+  hasGeneratedLocations: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 

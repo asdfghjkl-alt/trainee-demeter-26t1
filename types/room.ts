@@ -14,9 +14,9 @@ export interface Category {
 export interface Location {
   _id?: string;
   name: string;
-  description: string;   
+  description: string;
   latitude: number;
-  longitude: number;     
+  longitude: number;
   addedByAdmin?: boolean;
   category?: string;
 }
@@ -38,13 +38,13 @@ export interface Participant {
 
 export interface Room {
   _id: string;
-  name: string;          
+  name: string;
   code: string;
-  adminUser: string;      
-  participants: Participant[];  
-  categories: Category[];      
+  adminUser: string;
+  participants: Participant[];
+  categories: Category[];
   locations: Location[];
-  status: RoomStatus;    
+  status: RoomStatus;
   date?: string;
   meetingDirection?: "to-venue" | "from-venue";
   description?: string;
@@ -53,6 +53,7 @@ export interface Room {
   suggestion?: AlgorithmSuggestion;
   travelBudgetMinutes?: number;
   algorithmNotices?: string[];
+  hasGeneratedLocations?: boolean;
   createdAt: string;
 }
 

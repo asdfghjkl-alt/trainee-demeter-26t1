@@ -44,8 +44,16 @@ export const POST = apiHandler(
       );
     }
 
+    if (room.hasGeneratedLocations) {
+      return NextResponse.json(
+        { message: "Locations can only be auto-generated once per room." },
+        { status: 403 },
+      );
+    }
+
     // --- Parse optional travelBudgetMinutes from body -----------------------
     let travelBudgetMinutes: number = room.travelBudgetMinutes ?? 20;
+    let customCategoryIds: string[] | undefined;
 
     try {
       const body = await req.json().catch(() => ({}));
@@ -54,6 +62,9 @@ export const POST = apiHandler(
         travelBudgetMinutes = clamped;
         // Persist the updated budget on the room
         room.travelBudgetMinutes = clamped;
+      }
+      if (Array.isArray(body.categoryIds)) {
+        customCategoryIds = body.categoryIds;
       }
     } catch {
       // Body is optional; ignore parse errors
@@ -109,7 +120,11 @@ export const POST = apiHandler(
     }
 
     // --- Extract category names (populated) ---------------------------------
-    const categoryNames: string[] = (room.categories as any[]).map(
+    const activeCategories = customCategoryIds
+      ? (room.categories as any[]).filter(c => customCategoryIds!.includes(c._id.toString()))
+      : (room.categories as any[]);
+
+    const categoryNames: string[] = activeCategories.map(
       (c) => c.name as string,
     );
 
@@ -179,6 +194,7 @@ export const POST = apiHandler(
 
     room.locations = [...adminAdded, ...newLocations] as any;
     room.algorithmNotices = warnings;
+    room.hasGeneratedLocations = true;
     await room.save();
 
     // --- Build response -----------------------------------------------------
