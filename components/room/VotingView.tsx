@@ -131,6 +131,8 @@ export default function VotingView({
 
   interface RouteDetails {
     distance: number;
+    walkingDistance?: number;
+    transitDistance?: number;
     duration: number;
     geometry?: any;
   }
@@ -215,6 +217,8 @@ export default function VotingView({
                 id: loc._id!,
                 details: {
                   distance: data.distance,
+                  walkingDistance: data.walkingDistance,
+                  transitDistance: data.transitDistance,
                   duration: data.duration,
                   geometry: data.geometry,
                 },
@@ -379,9 +383,9 @@ export default function VotingView({
             route
               ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km</span>
-              <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${isTransit && route.walkingDistance !== undefined && route.walkingDistance > 0 ? (route.walkingDistance / 1000).toFixed(1) + ' km walking' : (route.distance / 1000).toFixed(1) + ' km'}</span>
             </div>
           `
               : `
@@ -427,9 +431,9 @@ export default function VotingView({
             route
               ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
-              <span>${(route.distance / 1000).toFixed(1)} km</span>
-              <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
+              <span class="text-gray-300 dark:text-gray-700">•</span>
+              <span>${currentParticipant?.transportationMode === 'transit' && route.walkingDistance !== undefined && route.walkingDistance > 0 ? (route.walkingDistance / 1000).toFixed(1) + ' km walking' : (route.distance / 1000).toFixed(1) + ' km'}</span>
             </div>
           `
               : `

@@ -12,7 +12,7 @@ interface Props {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
   onViewMap?: () => void;
-  routeDetails?: { distance: number; duration: number } | null;
+  routeDetails?: { distance: number; walkingDistance?: number; transitDistance?: number; duration: number } | null;
   isTransit?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -56,9 +56,12 @@ export default function LocationCard({
   // Helper to format distance and duration
   const getDistanceString = () => {
     if (!routeDetails) return null;
-    const km = routeDetails.distance / 1000;
     const mins = Math.round(routeDetails.duration / 60);
-    return `${km.toFixed(1)} km (${mins} mins)`;
+    if (isTransit && routeDetails.walkingDistance !== undefined && routeDetails.walkingDistance > 0) {
+      return `${mins} mins • ${(routeDetails.walkingDistance / 1000).toFixed(1)} km walking`;
+    }
+    const km = routeDetails.distance / 1000;
+    return `${mins} mins • ${km.toFixed(1)} km`;
   };
 
   const distanceStr = getDistanceString();

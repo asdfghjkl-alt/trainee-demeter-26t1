@@ -102,6 +102,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
           const features = [];
 
           let totalDistance = 0;
+          let walkingDistance = 0;
+          let transitDistance = 0;
 
           // Compare departure and arrival times to get estimated duration
           const depTimeStr =
@@ -194,6 +196,12 @@ export const GET = apiHandler(async (req: NextRequest) => {
               coordinates: coords,
             });
 
+            if (mode === "walking") {
+              walkingDistance += leg.distance || 0;
+            } else {
+              transitDistance += leg.distance || 0;
+            }
+
             if (coords.length > 0) {
               features.push({
                 type: "Feature",
@@ -208,6 +216,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
           return NextResponse.json({
             distance: totalDistance,
+            walkingDistance,
+            transitDistance,
             duration,
             legs: legsData,
             geometry: {
@@ -291,6 +301,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
           const legsData = [];
           const features = [];
           let totalDistance = 0;
+          let walkingDistance = 0;
+          let transitDistance = 0;
           let totalDuration = 0;
 
           for (const f of rawFeatures) {
@@ -360,6 +372,11 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
               totalDistance += distanceMeters;
               totalDuration += durationSec;
+              if (mode === "walking") {
+                walkingDistance += distanceMeters;
+              } else {
+                transitDistance += distanceMeters;
+              }
 
               let coords = f.geometry.coordinates;
               if (coords && coords.length > 0 && Array.isArray(coords[0])) {
@@ -398,6 +415,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
           if (features.length > 0) {
             return NextResponse.json({
               distance: totalDistance,
+              walkingDistance,
+              transitDistance,
               duration: totalDuration,
               legs: legsData,
               geometry: {
@@ -441,6 +460,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
         // Mock a single transit leg using driving geometries
         return NextResponse.json({
           distance: route.distance,
+          walkingDistance: 0,
+          transitDistance: route.distance,
           duration: route.duration * 1.3, // add some transit buffer
           legs: [
             {
