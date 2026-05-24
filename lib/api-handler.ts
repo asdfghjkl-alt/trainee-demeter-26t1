@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimit } from "./rate-limit";
 
 interface ApiError extends Error {
   statusCode?: number;
@@ -21,6 +22,24 @@ export const apiHandler =
   ) =>
   async (req: NextRequest | Request, ...args: TArgs) => {
     try {
+      // Apply Rate Limiting
+      const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+      const { success, limit, remaining, resetTime } = rateLimit(ip);
+
+      if (!success) {
+        return NextResponse.json(
+          { message: "Too Many Requests" },
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Limit": limit.toString(),
+              "X-RateLimit-Remaining": remaining.toString(),
+              "X-RateLimit-Reset": resetTime.toString(),
+            },
+          },
+        );
+      }
+
       return await handler(req as NextRequest, ...args);
     } catch (err) {
       const error = err as ApiError;
