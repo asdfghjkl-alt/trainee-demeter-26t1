@@ -111,6 +111,17 @@ To access the documentation:
 
 ## TODOs & Future Work
 
+### Strategic Differentiators (vs. Competitors)
+
+To secure the position as the premium, more advanced alternative to tools like "Meet in the Middle," these features lean into Rendezvous's core strengths (multiplayer collaboration, algorithmic fairness, and end-to-end logistics):
+
+- [ ] **Financial Fairness (Cost-Aware Routing)**: Integrate basic fare estimation APIs (Uber/Lyft/Transit) alongside travel time to ensure equitable financial splits, preventing one person from paying $50 while others ride free.
+- [ ] **Multi-Destination "Night Out" Itineraries**: Upgrade the algorithm to find a cluster of venues (e.g., Dinner + Drinks) rather than a single point, routing everyone home from the final stop.
+- [ ] **Asymmetric "Willingness" Thresholds**: Allow users to indicate how much they *care* about traveling. Shift the mathematical center of gravity toward the lazier/busier person to model real friend group compromises.
+- [ ] **Dynamic Vibe & Weather Integration**: Ping a weather API based on the meeting time. If it's going to rain, penalize outdoor venues or those requiring long walks from transit, prioritizing indoor spots with door-to-door access.
+- [ ] **The "Late Friend" Adjuster**: Utilize live GPS tracking to dynamically adjust the venue slightly closer to those who were on time, or simply update ETAs live via WebSockets if someone hasn't left their house yet.
+- [ ] **Seamless Logistics & Calendar Handoff**: Once finalized, instantly generate `.ics` calendar invites, "Call Uber/Lyft" deep links with pre-filled destinations, and native Maps routing to eliminate post-voting friction.
+
 ### Algorithm Limitations
 
 While the algorithm uses a highly robust Dual-Proximity search to avoid geographical pitfalls, it still has a few known limitations to be improved in the future:
@@ -125,12 +136,9 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 
 ### Algorithm Enhancements
 
-- [ ] **Asymmetric Tolerance Thresholds**: Account for varying individual travel willingness. Instead of aiming for a strictly equal travel time for everyone, the algorithm can optimize "fairness" relative to each user's maximum acceptable travel time (e.g., User A is willing to travel 90 mins, User B only 30 mins).
 - [ ] **Weighted Preferences**: Allow users to weight their preferences (e.g., "Must have Wi-Fi" vs "Nice to have Wi-Fi") to provide more granular scoring for auto-generated venues.
 - [ ] **Time-of-Day Traffic Predictions**: Incorporate predictive traffic models to adjust travel time estimates based on the specific planned time of the meeting, rather than just current traffic.
-- [ ] **Cost-Aware Routing**: Factor in toll roads, parking costs, or public transit fares into the "fairness" score to equalize financial burden alongside travel time.
-- [ ] **Multi-Destination Itinerary**: Extend the algorithm to not just find a single meeting spot, but to sequence multiple locations (e.g. dinner then drinks) for an optimal group route.
-- [ ] **Micro-Mobility Integration**: Factor in e-scooters and shared bikes (Lime, Bird, etc.) as valid last-mile connection options when calculating transit times and isochrone boundaries.
+- [ ] **Micro-Mobility Integration**: Factor in e-scooters and shared bikes (Lime, Bird, etc.) as valid last-mile connection options when calculating transit times and isochrones.
 - [ ] **Accessibility (Step-Free) Routing**: Provide strict filters to query transit APIs for step-free routes and wheelchair-friendly stations, adjusting the fairness score accordingly.
 - [ ] **Carbon-Efficient Routing**: Calculate the CO2 emissions of different routes and introduce a "green" bias to promote environmentally friendly meeting spots.
 
@@ -142,7 +150,6 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 - [ ] **Accessibility (a11y) Improvements**: Enhance the drag-and-drop voting interface and color-coded map legends for screen readers and keyboard-only navigation.
 - [ ] **Native Mobile Application**: Port the web app to a native mobile application (e.g., React Native) for deep OS integration, rich push notifications, and background location services.
 - [ ] **Guest List & RSVP Tracking**: Allow admins to send formal invites via email/SMS, track RSVPs, and automatically drop users who decline from the algorithm's calculations.
-- [ ] **One-Click Export**: Once a venue is finalized, generate one-click "Add to Calendar" (.ics) and "Open in Google/Apple Maps" deep links for all participants.
 - [ ] **Lobby Group Chat**: Provide a mini chat window in the voting lobby for participants to discuss the venue options in real-time.
 - [ ] **Internationalization (i18n)**: Translate the application into multiple languages and format dates, times, and distances (Metric vs Imperial) according to local user conventions.
 
