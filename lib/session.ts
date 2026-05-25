@@ -108,7 +108,13 @@ export async function clearSession() {
 
 export async function updateSessionMiddleware(request: NextRequest) {
   const token = request.cookies.get(JWT_NAME)?.value;
-  if (!token) return NextResponse.next();
+  if (!token) {
+    return NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
+  }
 
   try {
     const { payload } = await jwtVerify(token, secret);
@@ -118,7 +124,11 @@ export async function updateSessionMiddleware(request: NextRequest) {
       .setExpirationTime(JWT_EXPIRATION)
       .sign(secret);
 
-    const response = NextResponse.next();
+    const response = NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
     response.cookies.set(JWT_NAME, newToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -129,6 +139,10 @@ export async function updateSessionMiddleware(request: NextRequest) {
     return response;
   } catch (err) {
     void err;
-    return NextResponse.next();
+    return NextResponse.next({
+      request: {
+        headers: request.headers,
+      },
+    });
   }
 }

@@ -32,11 +32,12 @@ export async function proxy(request: NextRequest) {
     .replace(/\s{2,}/g, " ")
     .trim();
 
-  // Forward the nonce to Server Components via a request header so that
-  // layout.tsx can attach it to <Script> / <style> elements.
+  // Forward the nonce and the CSP to Server Components via request headers
+  // Next.js uses this to attach the nonce to its internal hydration scripts
   const requestHeaders = new Headers(request.headers);
   if (nonce) {
     requestHeaders.set("x-nonce", nonce);
+    requestHeaders.set("Content-Security-Policy", cspHeader);
   }
 
   // Run session middleware, carrying the updated request headers
