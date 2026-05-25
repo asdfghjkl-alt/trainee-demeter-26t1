@@ -15,6 +15,6 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   };
 }
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+export function ThemeProvider({ children, nonce, ...props }: ThemeProviderProps & { nonce?: string }) {
+  return <NextThemesProvider nonce={nonce} {...props}>{children}</NextThemesProvider>;
 }

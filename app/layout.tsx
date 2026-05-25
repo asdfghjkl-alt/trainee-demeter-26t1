@@ -33,7 +33,7 @@ export default async function RootLayout({
         )}
       </head>
       <body className="min-h-full flex flex-col text-gray-900 bg-white dark:text-gray-100 dark:bg-[#0a0a0a] font-sans">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
           <Toaster position="top-center" />
           <Providers>
             <Navbar />
