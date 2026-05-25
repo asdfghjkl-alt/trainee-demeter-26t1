@@ -106,9 +106,17 @@ export async function clearSession() {
   cookieStore.set(JWT_NAME, "", { expires: new Date(0) });
 }
 
-export async function updateSessionMiddleware(request: NextRequest) {
+/**
+ * Refreshes the session JWT cookie on the given response, if a valid token is present.
+ * The caller is responsible for creating the NextResponse (so request headers like
+ * x-nonce can be forwarded to the renderer via NextResponse.next({ request })).
+ */
+export async function applySessionRefresh(
+  request: NextRequest,
+  response: NextResponse,
+): Promise<void> {
   const token = request.cookies.get(JWT_NAME)?.value;
-  if (!token) return NextResponse.next({ request: { headers: request.headers } });
+  if (!token) return;
 
   try {
     const { payload } = await jwtVerify(token, secret);
@@ -118,7 +126,32 @@ export async function updateSessionMiddleware(request: NextRequest) {
       .setExpirationTime(JWT_EXPIRATION)
       .sign(secret);
 
-    const response = NextResponse.next({ request: { headers: request.headers } });
+    response.cookies.set(JWT_NAME, newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(Date.now() + JWT_SESSION_DURATION),
+    });
+  } catch {
+    // Invalid token — leave the response untouched; the existing cookie will expire naturally.
+  }
+}
+
+/** @deprecated Use applySessionRefresh instead. */
+export async function updateSessionMiddleware(request: NextRequest) {
+  const token = request.cookies.get(JWT_NAME)?.value;
+  if (!token) return NextResponse.next();
+
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    const newToken = await new SignJWT(payload)
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(JWT_EXPIRATION)
+      .sign(secret);
+
+    const response = NextResponse.next();
     response.cookies.set(JWT_NAME, newToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -129,6 +162,7 @@ export async function updateSessionMiddleware(request: NextRequest) {
     return response;
   } catch (err) {
     void err;
-    return NextResponse.next({ request: { headers: request.headers } });
+    return NextResponse.next();
   }
 }
+
