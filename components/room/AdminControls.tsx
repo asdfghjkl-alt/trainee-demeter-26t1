@@ -21,9 +21,11 @@ export default function AdminControls({ room, onRoomUpdate }: Props) {
   // Use the categories selected for the room
   useEffect(() => {
     setAllCategories(room.categories);
-    setSelectedCategories(room.categories.map((c) => c._id));
-    setLoadingCategories(false);
-  }, [room.categories]);
+    if (loadingCategories && room.categories) {
+      setSelectedCategories(room.categories.map((c) => c._id));
+      setLoadingCategories(false);
+    }
+  }, [room.categories, loadingCategories]);
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories((prev) =>

@@ -1,5 +1,13 @@
 // components/room/LocationCard.tsx
-import { GripVertical, ExternalLink, ChevronUp, ChevronDown, Search, Sparkles, User } from "lucide-react";
+import {
+  GripVertical,
+  ExternalLink,
+  ChevronUp,
+  ChevronDown,
+  Search,
+  Sparkles,
+  User,
+} from "lucide-react";
 import type { Location, Category } from "@/types/room";
 
 interface Props {
@@ -12,7 +20,12 @@ interface Props {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: () => void;
   onViewMap?: () => void;
-  routeDetails?: { distance: number; walkingDistance?: number; transitDistance?: number; duration: number } | null;
+  routeDetails?: {
+    distance: number;
+    walkingDistance?: number;
+    transitDistance?: number;
+    duration: number;
+  } | null;
   isTransit?: boolean;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
@@ -57,7 +70,11 @@ export default function LocationCard({
   const getDistanceString = () => {
     if (!routeDetails) return null;
     const mins = Math.round(routeDetails.duration / 60);
-    if (isTransit && routeDetails.walkingDistance !== undefined && routeDetails.walkingDistance > 0) {
+    if (
+      isTransit &&
+      routeDetails.walkingDistance !== undefined &&
+      routeDetails.walkingDistance > 0
+    ) {
       return `${mins} mins • ${(routeDetails.walkingDistance / 1000).toFixed(1)} km walking`;
     }
     const km = routeDetails.distance / 1000;
@@ -76,15 +93,16 @@ export default function LocationCard({
       }}
       onDrop={onDrop}
       className={`flex items-center gap-4 rounded-xl border bg-white dark:bg-[#111] px-4 py-3 transition-all cursor-grab active:cursor-grabbing
-        ${isDragging
-          ? "opacity-30 border-cyan-400 dark:border-cyan-600 scale-95"  // faded while being dragged
-          : isHovered
-            ? "opacity-50 border-cyan-300 dark:border-cyan-700 scale-95"
-            : "border-gray-200 dark:border-gray-800 hover:border-cyan-300 dark:hover:border-cyan-700"
+        ${
+          isDragging
+            ? "opacity-30 border-cyan-400 dark:border-cyan-600 scale-95" // faded while being dragged
+            : isHovered
+              ? "opacity-50 border-cyan-300 dark:border-cyan-700 scale-95"
+              : "border-gray-200 dark:border-gray-800 hover:border-cyan-300 dark:hover:border-cyan-700"
         }`}
     >
       {/* Drag handle & Mobile Reorder buttons */}
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-1 shrink-0">
         <GripVertical className="hidden sm:block w-5 h-5 text-gray-300 dark:text-gray-600 cursor-grab" />
         <div className="flex flex-col gap-0.5">
           <button
@@ -94,8 +112,11 @@ export default function LocationCard({
               if (onMoveUp) onMoveUp();
             }}
             disabled={isFirst}
-            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isFirst ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
-              }`}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+              isFirst
+                ? "text-gray-200 dark:text-gray-800 cursor-not-allowed"
+                : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+            }`}
             title="Move Up"
             type="button"
           >
@@ -108,8 +129,11 @@ export default function LocationCard({
               if (onMoveDown) onMoveDown();
             }}
             disabled={isLast}
-            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${isLast ? "text-gray-200 dark:text-gray-800 cursor-not-allowed" : "text-gray-400 dark:text-cyan-500 cursor-pointer"
-              }`}
+            className={`p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+              isLast
+                ? "text-gray-200 dark:text-gray-800 cursor-not-allowed"
+                : "text-gray-400 dark:text-cyan-500 cursor-pointer"
+            }`}
             title="Move Down"
             type="button"
           >
@@ -119,7 +143,7 @@ export default function LocationCard({
       </div>
 
       {/* Rank badge */}
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-600 text-white text-sm font-bold flex items-center justify-center">
+      <div className="shrink-0 w-8 h-8 rounded-full bg-cyan-600 text-white text-sm font-bold flex items-center justify-center">
         {rank}
       </div>
 
@@ -163,7 +187,7 @@ export default function LocationCard({
       </div>
 
       {/* Links: Map (in-app focus) + Google search (external) */}
-      <div className="flex-shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
+      <div className="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
         <a
           href={mapUrl}
           target="_blank"
