@@ -95,11 +95,12 @@ export async function getIsochrone(
   budgetMinutes: number,
   mapboxToken: string,
   targomoKey?: string,
+  targomoEndpoint?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   // Use Targomo for true transit isochrones if a key is provided
-  if (participant.transportationMode === "transit" && targomoKey) {
+  if (participant.transportationMode === "transit" && targomoKey && targomoEndpoint) {
     try {
-      const url = `https://api.targomo.com/australia/v1/polygon?key=${targomoKey}`;
+      const url = `https://api.targomo.com/${targomoEndpoint}/v1/polygon?key=${targomoKey}`;
       const payload = {
         sources: [
           {
@@ -291,6 +292,7 @@ export async function searchPOIs(
   categoryNames: string[],
   mapboxToken: string,
   limitPerCategory = 8,
+  country?: string,
 ): Promise<CandidateLocation[]> {
   const seen = new Set<string>();
   const results: CandidateLocation[] = [];
@@ -300,11 +302,12 @@ export async function searchPOIs(
       await Promise.all(
         categoryNames.map(async (cat) => {
           const query = encodeURIComponent(categoryToQuery(cat));
+          const countryParam = country && country !== "global" ? `&country=${country}` : "";
           const url =
             `https://api.mapbox.com/search/searchbox/v1/forward` +
             `?q=${query}` +
             `&proximity=${center.lng},${center.lat}` +
-            `&country=au` +
+            `${countryParam}` +
             `&limit=${limitPerCategory}` +
             `&access_token=${mapboxToken}`;
 
@@ -474,9 +477,9 @@ async function getTravelTimeTargomo(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
   targomoKey: string,
+  targomoEndpoint: string,
 ): Promise<number | null> {
-  // Hardcoded to australia endpoint for now to match the isochrone setup
-  const url = `https://api.targomo.com/australia/v1/time?key=${targomoKey}`;
+  const url = `https://api.targomo.com/${targomoEndpoint}/v1/time?key=${targomoKey}`;
   const payload = {
     sources: [{ id: "src", lat: from.lat, lng: from.lng }],
     targets: [{ id: "tgt", lat: to.lat, lng: to.lng }],
@@ -521,6 +524,8 @@ export async function scoreCandidates(
   date?: Date,
   tfnswKey?: string,
   targomoKey?: string,
+  country?: string,
+  targomoEndpoint?: string,
 ): Promise<ScoredLocation[]> {
   const scored: ScoredLocation[] = await Promise.all(
     candidates.map(async (c) => {
@@ -537,7 +542,7 @@ export async function scoreCandidates(
               ? { lat: p.latitude, lng: p.longitude }
               : { lat: c.latitude, lng: c.longitude };
 
-          if (p.transportationMode === "transit" && tfnswKey) {
+          if (p.transportationMode === "transit" && tfnswKey && country === "au") {
             minutes = await getTravelTimeTfNSW(
               origin,
               destination,
@@ -546,16 +551,17 @@ export async function scoreCandidates(
             );
           }
 
-          // Fallback 1: Targomo Transit Routing
           if (
             minutes == null &&
             p.transportationMode === "transit" &&
-            targomoKey
+            targomoKey &&
+            targomoEndpoint
           ) {
             minutes = await getTravelTimeTargomo(
               origin,
               destination,
               targomoKey,
+              targomoEndpoint,
             );
           }
 
@@ -639,10 +645,11 @@ async function checkIntersectionFeasibility(
   budgetMinutes: number,
   mapboxToken: string,
   targomoKey?: string,
+  targomoEndpoint?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   const isochroneResults = await Promise.all(
     validParticipants.map((p) =>
-      getIsochrone(p, budgetMinutes, mapboxToken, targomoKey),
+      getIsochrone(p, budgetMinutes, mapboxToken, targomoKey, targomoEndpoint),
     ),
   );
 
@@ -671,6 +678,7 @@ export async function generateLocations(opts: {
   tfnswKey?: string;
   targomoKey?: string;
   topN?: number;
+  country?: string;
 }): Promise<GenerateLocationsResult> {
   const {
     participants,
@@ -682,6 +690,7 @@ export async function generateLocations(opts: {
     tfnswKey,
     targomoKey,
     topN = 5,
+    country,
   } = opts;
 
   // --- Guard: need at least one participant with coordinates ---------------
@@ -705,6 +714,28 @@ export async function generateLocations(opts: {
     );
   }
 
+  // Calculate the geographic midpoint of all participants
+  const avgLat =
+    validParticipants.reduce((sum, p) => sum + p.latitude, 0) /
+    validParticipants.length;
+  const avgLng =
+    validParticipants.reduce((sum, p) => sum + p.longitude, 0) /
+    validParticipants.length;
+  const geographicMidpoint = { lat: avgLat, lng: avgLng };
+
+  let targomoEndpoint: string | undefined;
+  if (targomoKey) {
+    try {
+      const endpointRes = await fetch(`https://api.targomo.com/utility/endpoint/?latitude=${avgLat}&longitude=${avgLng}`);
+      if (endpointRes.ok) {
+        const endpointData = await endpointRes.json();
+        targomoEndpoint = endpointData.endpoint;
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   // --- Step 1 & 2: Binary Search for Tightest Feasible Intersection --------
   let usedFallback = false;
   let intersected: Feature<Polygon | MultiPolygon> | null = null;
@@ -715,6 +746,7 @@ export async function generateLocations(opts: {
     travelBudgetMinutes,
     mapboxToken,
     targomoKey,
+    targomoEndpoint,
   );
 
   if (!maxFeasible) {
@@ -725,7 +757,7 @@ export async function generateLocations(opts: {
     // we fetch the max isochrones again and use the fallback from intersectIsochrones
     const isochroneResults = await Promise.all(
       validParticipants.map((p) =>
-        getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey),
+        getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey, targomoEndpoint),
       ),
     );
     const validPolygons = isochroneResults.filter(
@@ -754,6 +786,7 @@ export async function generateLocations(opts: {
         mid,
         mapboxToken,
         targomoKey,
+        targomoEndpoint,
       );
 
       if (testFeasible) {
@@ -768,15 +801,6 @@ export async function generateLocations(opts: {
   }
 
   // --- Step 3: Centroid ----------------------------------------------------
-  // Calculate the geographic midpoint of all participants
-  const avgLat =
-    validParticipants.reduce((sum, p) => sum + p.latitude, 0) /
-    validParticipants.length;
-  const avgLng =
-    validParticipants.reduce((sum, p) => sum + p.longitude, 0) /
-    validParticipants.length;
-  const geographicMidpoint = { lat: avgLat, lng: avgLng };
-
   const searchCenters = [geographicMidpoint];
 
   // If the isochrones successfully intersected, also search around the tight intersection centroid
@@ -792,6 +816,8 @@ export async function generateLocations(opts: {
     searchCenters,
     categoryNames,
     mapboxToken,
+    8,
+    country,
   );
 
   if (candidates.length === 0) {
@@ -803,7 +829,7 @@ export async function generateLocations(opts: {
   // Shuffle candidates to ensure a mix of both search centers
   const shuffledCandidates = candidates.sort(() => 0.5 - Math.random());
 
-  // --- Step 5: Score -------------------------------------------------------
+  // --- Step 5: Score Candidates --------------------------------------------
   // Score the top 30 raw candidates to limit API calls while capturing a diverse pool
   const toScore = shuffledCandidates.slice(0, 30);
   const scored = await scoreCandidates(
@@ -814,6 +840,8 @@ export async function generateLocations(opts: {
     date,
     tfnswKey,
     targomoKey,
+    country,
+    targomoEndpoint,
   );
 
   return {

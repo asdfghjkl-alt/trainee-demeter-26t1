@@ -155,6 +155,7 @@ export const POST = apiHandler(
         tfnswKey,
         targomoKey,
         topN: 5,
+        country: room.country,
       });
     } catch (err: any) {
       console.error("generateLocations error:", err);
