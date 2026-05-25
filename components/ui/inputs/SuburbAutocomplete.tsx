@@ -11,6 +11,7 @@ interface SuburbAutocompleteProps {
   readOnly?: boolean;
   required?: boolean;
   disabled?: boolean;
+  country?: string;
 }
 
 interface MapboxFeature {
@@ -43,6 +44,7 @@ export default function SuburbAutocomplete({
   readOnly = false,
   required = false,
   disabled = false,
+  country = "au",
 }: SuburbAutocompleteProps) {
   const [query, setQuery] = useState(value || "");
   const [suggestions, setSuggestions] = useState<MapboxFeature[]>([]);
@@ -97,8 +99,9 @@ export default function SuburbAutocomplete({
 
       try {
         const encodedText = encodeURIComponent(searchText);
+        const countryParam = country && country !== "global" ? `&country=${country}` : "";
         const res = await fetch(
-          `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedText}&country=au&types=locality,place&limit=10&proximity=ip&access_token=${token}`
+          `https://api.mapbox.com/search/geocode/v6/forward?q=${encodedText}${countryParam}&types=locality,place&limit=10&proximity=ip&access_token=${token}`
         );
 
         if (!res.ok) {

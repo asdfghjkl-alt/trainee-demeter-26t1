@@ -23,10 +23,12 @@ export default function PreferencesForm({
   code,
   user,
   meetingDirection = "to-venue",
+  country = "au",
 }: {
   code: string;
   user?: { name?: string };
   meetingDirection?: "to-venue" | "from-venue";
+  country?: string;
 }) {
   const router = useRouter();
   const {
@@ -88,8 +90,9 @@ export default function PreferencesForm({
         try {
           // Reverse geocode to get suburb
           const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+          const countryParam = country && country !== "global" ? `&country=${country}` : "";
           const res = await fetch(
-            `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&access_token=${token}&country=au&types=locality,place`,
+            `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&access_token=${token}${countryParam}&types=locality,place`,
           );
           const json = await res.json();
           // Use properties.name for the suburb, then append state code + country
@@ -98,10 +101,10 @@ export default function PreferencesForm({
           const name = feature?.properties?.name || "";
           const city = feature?.properties?.context?.place?.name || "";
           const state = feature?.properties?.context?.region?.region_code || "";
-          const country = feature?.properties?.context?.country?.name || "";
+          const detectedCountry = feature?.properties?.context?.country?.name || "";
 
           // Uses truthy value check to prevent empty strings from being included
-          const suburb = [name, city, state, country]
+          const suburb = [name, city, state, detectedCountry]
             .filter(Boolean)
             .join(", ");
           setValue("location", suburb);
@@ -230,6 +233,7 @@ export default function PreferencesForm({
               }
               readOnly={useCurrentLocation}
               required={!useCurrentLocation}
+              country={country}
             />
 
           {/* Dietary Requirements */}

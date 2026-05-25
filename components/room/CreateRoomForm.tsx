@@ -15,6 +15,7 @@ type CreateRoomFormData = {
   meetingDirection: "to-venue" | "from-venue";
   description: string;
   location: string;
+  country: string;
   transportationMode: string;
   useCurrentLocation: boolean;
   dietaryRequirements: string[];
@@ -49,6 +50,7 @@ export default function CreateRoomForm({
       meetingDirection: "to-venue",
       description: "",
       location: "",
+      country: "au",
       transportationMode: "",
       useCurrentLocation: false,
       dietaryRequirements: [],
@@ -123,8 +125,10 @@ export default function CreateRoomForm({
         const { latitude, longitude } = position.coords;
         try {
           const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+          const currentCountry = watch("country");
+          const countryParam = currentCountry && currentCountry !== "global" ? `&country=${currentCountry}` : "";
           const res = await fetch(
-            `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&access_token=${token}&country=au&types=locality,place`,
+            `https://api.mapbox.com/search/geocode/v6/reverse?longitude=${longitude}&latitude=${latitude}&access_token=${token}${countryParam}&types=locality,place`,
           );
           const json = await res.json();
           const feature = json.features?.[0];
@@ -216,6 +220,7 @@ export default function CreateRoomForm({
         name: data.name.trim(),
         categoryIds: selectedCategoryIds,
         location: data.location.trim(),
+        country: data.country,
         transportationMode: data.transportationMode,
         date: data.date ? new Date(data.date).toISOString() : undefined,
         meetingDirection: data.meetingDirection,
@@ -259,14 +264,46 @@ export default function CreateRoomForm({
       {/* FORM (full width) */}
       <div className="mt-10 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-100/70 dark:bg-gray-900/40 p-6 shadow-sm backdrop-blur-sm">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <InputField
-            label="Meeting Name"
-            name="name"
-            placeholder="e.g. DevSoc Hangout"
-            register={register}
-            error={errors.name}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <InputField
+              label="Meeting Name"
+              name="name"
+              placeholder="e.g. DevSoc Hangout"
+              register={register}
+              error={errors.name}
+              required
+            />
+
+            <div>
+              <label htmlFor="country" className="my-2 block font-medium text-gray-900 dark:text-white">
+                Meetup Country
+                <span className="text-red-500"> *</span>
+              </label>
+              <div className="relative">
+                <select
+                  id="country"
+                  {...register("country")}
+                  className="w-full appearance-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-3 pr-12 text-base text-gray-900 dark:text-gray-100 transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 focus:outline-none"
+                >
+                  <option value="au">Australia</option>
+                  <option value="us">United States</option>
+                  <option value="gb">United Kingdom</option>
+                  <option value="nz">New Zealand</option>
+                  <option value="ca">Canada</option>
+                  <option value="global">Global / Other</option>
+                </select>
+                <svg
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </div>
+            </div>
+          </div>
 
           {/* Date + Category side-by-side on sm+ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -579,6 +616,7 @@ export default function CreateRoomForm({
                 }
                 readOnly={useCurrentLocation}
                 required={!useCurrentLocation}
+                country={watch("country")}
               />
 
               <div>

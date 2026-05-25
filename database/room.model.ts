@@ -42,6 +42,7 @@ export interface IRoom extends Document {
   algorithmNotices?: string[];
   hasGeneratedLocations?: boolean;
   createdAt: Date; // The time when the room was created
+  country?: string;
 }
 
 const locationSchema = new Schema<ILocation>({
@@ -100,6 +101,7 @@ const roomSchema = new Schema<IRoom>({
   algorithmNotices: [{ type: String }],
   hasGeneratedLocations: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
+  country: { type: String, default: "au" },
 });
 
 const Room = models.Room || mongoose.model<IRoom>("Room", roomSchema);

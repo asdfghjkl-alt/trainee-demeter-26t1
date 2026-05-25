@@ -60,6 +60,7 @@ export const roomSchema = Joi.object({
     "number.min": "Travel budget must be at least 1 minute",
     "number.max": "Travel budget cannot exceed 120 minutes",
   }),
+  country: Joi.string().trim().max(10).default("au").optional(),
 });
 
 export const addLocationSchema = Joi.object({

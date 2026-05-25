@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiHandler } from "@/lib/api-handler";
 
-function formatSydneyDateTime(date: Date) {
+function formatLocalTime(date: Date, timeZone: string) {
   const optionsDate = {
-    timeZone: "Australia/Sydney",
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   } as const;
   const optionsTime = {
-    timeZone: "Australia/Sydney",
+    timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -36,6 +36,7 @@ function formatSydneyDateTime(date: Date) {
 
 export const GET = apiHandler(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
+  const timeZone = req.headers.get("x-timezone") || "Australia/Sydney";
   const originLat = searchParams.get("originLat");
   const originLng = searchParams.get("originLng");
   const destLat = searchParams.get("destLat");
@@ -83,7 +84,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
       if (dateParam) {
         const parsedDate = new Date(dateParam);
         if (!isNaN(parsedDate.getTime())) {
-          const { itdDate, itdTime } = formatSydneyDateTime(parsedDate);
+          const { itdDate, itdTime } = formatLocalTime(parsedDate, timeZone);
           url.searchParams.set("itdDate", itdDate);
           url.searchParams.set("itdTime", itdTime);
           url.searchParams.set("depArrMacro", "dep");

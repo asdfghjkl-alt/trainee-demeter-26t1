@@ -5,7 +5,14 @@ import Link from "next/link";
 import type { Room, LocationResult } from "@/types/room";
 import api from "@/lib/axios";
 import axios from "axios";
-import { Trophy, Loader2, MapPin, Home, ExternalLink, AlertTriangle } from "lucide-react";
+import {
+  Trophy,
+  Loader2,
+  MapPin,
+  Home,
+  ExternalLink,
+  AlertTriangle,
+} from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -47,7 +54,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
         });
         setResults(res.data.results);
       } catch (err: unknown) {
-        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        const status = axios.isAxiosError(err)
+          ? err.response?.status
+          : undefined;
         if (status === 401) {
           setError("You're not authorized to see these results.");
         } else if (status === 400) {
@@ -63,7 +72,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
   }, [room.code, currentParticipantId]);
 
   // ─── Derived ───────────────────────────────────────────────────────────
-  const currentParticipant = room.participants.find((p) => p._id === currentParticipantId);
+  const currentParticipant = room.participants.find(
+    (p) => p._id === currentParticipantId,
+  );
   const isTransit = currentParticipant?.transportationMode === "transit";
 
   const totalVotes = useMemo(
@@ -90,7 +101,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
   }, [participantLat, participantLng]);
 
   // ─── Route fetching for winners ────────────────────────────────────────
-  const [routeDistances, setRouteDistances] = useState<{ [id: string]: RouteDetails }>({});
+  const [routeDistances, setRouteDistances] = useState<{
+    [id: string]: RouteDetails;
+  }>({});
 
   useEffect(() => {
     if (!activeOrigin || winners.length === 0) {
@@ -102,7 +115,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
       const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
       if (!token) return;
 
-      const profile = mapToMapboxProfile(currentParticipant?.transportationMode);
+      const profile = mapToMapboxProfile(
+        currentParticipant?.transportationMode,
+      );
       const next: { [id: string]: RouteDetails } = {};
 
       const promises = winners.map(async (loc) => {
@@ -117,7 +132,17 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
             ? `/api/routes/transit?originLat=${startLat}&originLng=${startLng}&destLat=${endLat}&destLng=${endLng}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
             : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?access_token=${token}&geometries=geojson`;
 
-          const res = await fetch(url);
+          const headers: HeadersInit = {};
+          if (isTransit) {
+            try {
+              headers["x-timezone"] =
+                Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          const res = await fetch(url, { headers });
           if (!res.ok) return null;
           const data = await res.json();
           if (isTransit) {
@@ -153,7 +178,14 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     };
 
     fetchRoutes();
-  }, [activeOrigin, winnersKey, currentParticipant?.transportationMode, room.date, room.meetingDirection, isTransit]);
+  }, [
+    activeOrigin,
+    winnersKey,
+    currentParticipant?.transportationMode,
+    room.date,
+    room.meetingDirection,
+    isTransit,
+  ]);
 
   // ─── Map ───────────────────────────────────────────────────────────────
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -162,7 +194,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
   const otherParticipantsMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const activePopupRef = useRef<mapboxgl.Popup | null>(null);
-  const [selectedMapLocationId, setSelectedMapLocationId] = useState<string | null>(null);
+  const [selectedMapLocationId, setSelectedMapLocationId] = useState<
+    string | null
+  >(null);
 
   // Init map once results are loaded so the container is mounted
   useEffect(() => {
@@ -206,7 +240,12 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
   const showLocationDetails = useCallback(
     (location: LocationResult) => {
       setSelectedMapLocationId(location._id || null);
-      if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+      if (
+        !mapInstance ||
+        !mapInstance.getCanvasContainer ||
+        !mapInstance.getCanvasContainer()
+      )
+        return;
 
       mapInstance.easeTo({
         center: [location.longitude, location.latitude],
@@ -222,17 +261,23 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
         <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
           <p class="font-bold mb-0.5">${escapeHtml(location.name)}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
-          ${activeOrigin ? (route ? `
+          ${
+            activeOrigin
+              ? route
+                ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
               <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : `
+          `
+                : `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
               <span>Calculating route...</span>
             </div>
-          `) : ""}
+          `
+              : ""
+          }
         </div>
       `;
 
@@ -255,7 +300,12 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
   // Render winner markers (and user origin), fit bounds, and auto-select the
   // single-winner case so the route is visible without clicking.
   useEffect(() => {
-    if (!mapInstance || !mapInstance.getCanvasContainer || !mapInstance.getCanvasContainer()) return;
+    if (
+      !mapInstance ||
+      !mapInstance.getCanvasContainer ||
+      !mapInstance.getCanvasContainer()
+    )
+      return;
 
     Object.values(markersRef.current).forEach((m) => m.remove());
     markersRef.current = {};
@@ -317,14 +367,17 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     // Participant markers (pulsing dots — amber for admin, cyan for others)
     room.participants.forEach((p) => {
       const isCurrentUser = p._id === currentParticipant?._id;
-      const lat = isCurrentUser && activeOrigin ? activeOrigin.latitude : p.latitude;
-      const lng = isCurrentUser && activeOrigin ? activeOrigin.longitude : p.longitude;
+      const lat =
+        isCurrentUser && activeOrigin ? activeOrigin.latitude : p.latitude;
+      const lng =
+        isCurrentUser && activeOrigin ? activeOrigin.longitude : p.longitude;
 
       if (lat != null && lng != null) {
         const el = document.createElement("div");
-        el.className = "relative flex items-center justify-center w-6 h-6 z-[50]";
+        el.className =
+          "relative flex items-center justify-center w-6 h-6 z-[50]";
         if (isCurrentUser) el.style.zIndex = "60";
-        
+
         el.innerHTML = `
           <span class="absolute inline-flex h-full w-full rounded-full ${p.isAdmin ? "bg-amber-400" : "bg-cyan-400"} opacity-75 animate-ping"></span>
           <span class="relative inline-flex rounded-full h-3.5 w-3.5 ${p.isAdmin ? "bg-amber-500" : "bg-cyan-600"} border border-white shadow-md"></span>
@@ -336,7 +389,7 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
 
         const isFromVenue = room.meetingDirection === "from-venue";
         let labelText = `${escapeHtml(p.name)}${p.isAdmin ? " (Admin)" : ""}<br/><span class="font-normal text-gray-500">${escapeHtml(p.location || "Unknown Suburb")}</span>`;
-        
+
         if (isCurrentUser) {
           const originLabel = isFromVenue
             ? `Your Return Suburb: ${p.location || "Destination"}`
@@ -368,7 +421,15 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     if (winners.length === 1) {
       setSelectedMapLocationId(winners[0]._id || null);
     }
-  }, [mapInstance, winnersKey, activeOrigin, currentParticipant?.location, room.meetingDirection, room.participants, currentParticipant]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    mapInstance,
+    winnersKey,
+    activeOrigin,
+    currentParticipant?.location,
+    room.meetingDirection,
+    room.participants,
+    currentParticipant,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync popup and route geometry when the selected winner or route data changes
   useEffect(() => {
@@ -388,17 +449,23 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
         <div class="p-2 text-xs text-gray-900 dark:text-white bg-white dark:bg-[#111] rounded-lg">
           <p class="font-bold mb-0.5">${escapeHtml(location.name)}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${escapeHtml(location.description)}</p>` : ""}
-          ${activeOrigin ? (route ? `
+          ${
+            activeOrigin
+              ? route
+                ? `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
               <span>${(route.distance / 1000).toFixed(1)} km</span>
               <span class="text-gray-300 dark:text-gray-700">•</span>
               <span>${Math.round(route.duration / 60)} mins</span>
             </div>
-          ` : `
+          `
+                : `
             <div class="mt-1.5 pt-1.5 border-t border-gray-100 dark:border-gray-800 text-[10px] text-gray-400 flex items-center gap-1.5">
               <span>Calculating route...</span>
             </div>
-          `) : ""}
+          `
+              : ""
+          }
         </div>
       `;
       activePopupRef.current.setHTML(popupHtml);
@@ -409,7 +476,8 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
 
     if (route?.geometry) {
       const geojson =
-        (route.geometry as GeoJSON.FeatureCollection).type === "FeatureCollection"
+        (route.geometry as GeoJSON.FeatureCollection).type ===
+        "FeatureCollection"
           ? (route.geometry as GeoJSON.FeatureCollection)
           : ({
               type: "Feature" as const,
@@ -418,7 +486,9 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
             } as GeoJSON.Feature);
 
       if (mapInstance.getSource("route")) {
-        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(geojson as GeoJSON.FeatureCollection | GeoJSON.Feature);
+        (mapInstance.getSource("route") as mapboxgl.GeoJSONSource).setData(
+          geojson as GeoJSON.FeatureCollection | GeoJSON.Feature,
+        );
       } else {
         mapInstance.addSource("route", {
           type: "geojson",
@@ -433,23 +503,35 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
             "line-color": [
               "match",
               ["coalesce", ["get", "mode"], "transit"],
-              "walking", "#3b82f6",
-              "train", "#f97316",
-              "bus", "#eab308",
-              "metro", "#a855f7",
-              "ferry", "#06b6d4",
-              "tram", "#ef4444",
+              "walking",
+              "#3b82f6",
+              "train",
+              "#f97316",
+              "bus",
+              "#eab308",
+              "metro",
+              "#a855f7",
+              "ferry",
+              "#06b6d4",
+              "tram",
+              "#ef4444",
               "#10b981",
             ] as unknown as mapboxgl.ExpressionSpecification,
             "line-width": [
               "match",
               ["coalesce", ["get", "mode"], "transit"],
-              "walking", 3,
-              "train", 6,
-              "bus", 5,
-              "metro", 6,
-              "ferry", 5,
-              "tram", 5,
+              "walking",
+              3,
+              "train",
+              6,
+              "bus",
+              5,
+              "metro",
+              6,
+              "ferry",
+              5,
+              "tram",
+              5,
               5,
             ] as unknown as mapboxgl.ExpressionSpecification,
             "line-opacity": 0.85,
@@ -462,7 +544,14 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
         features: [],
       });
     }
-  }, [mapInstance, selectedMapLocationId, routeDistances, winners, activeOrigin, isTransit]);
+  }, [
+    mapInstance,
+    selectedMapLocationId,
+    routeDistances,
+    winners,
+    activeOrigin,
+    isTransit,
+  ]);
 
   // ─── Render ────────────────────────────────────────────────────────────
   if (loading) {
@@ -500,14 +589,21 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
                 Algorithm Notice
               </div>
               {room.algorithmNotices.map((notice, i) => (
-                <p key={i} className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                <p
+                  key={i}
+                  className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed"
+                >
                   {notice}
                 </p>
               ))}
             </div>
           )}
 
-          {hasAnyVotes ? <Podium winners={winners} onViewMap={showLocationDetails} /> : <NoVotesCard />}
+          {hasAnyVotes ? (
+            <Podium winners={winners} onViewMap={showLocationDetails} />
+          ) : (
+            <NoVotesCard />
+          )}
 
           <Breakdown results={results} hasAnyVotes={hasAnyVotes} />
 
@@ -535,35 +631,52 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
               </span>
             </div>
             <div className="relative h-[400px] lg:h-[600px] w-full bg-gray-100 dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-xs">
-              <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+              <div
+                ref={mapContainerRef}
+                className="absolute inset-0 w-full h-full"
+              />
 
               {isTransit && hasAnyVotes && (
                 <div className="absolute bottom-3 left-3 bg-white/95 dark:bg-[#111]/90 backdrop-blur-md p-3 rounded-xl border border-gray-200 dark:border-gray-800 shadow-md z-10 text-[10px] space-y-2 pointer-events-none select-none max-w-[150px]">
-                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">Transit Legend</p>
+                  <p className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800 pb-1 mb-1">
+                    Transit Legend
+                  </p>
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#a855f7]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Metro</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Metro
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#f97316]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Train</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Train
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#eab308]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Bus</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Bus
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#06b6d4]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Ferry</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Ferry
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#ef4444]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Light Rail</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Light Rail
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-3.5 h-1 rounded bg-[#3b82f6]" />
-                      <span className="text-gray-600 dark:text-gray-400 font-medium">Walking</span>
+                      <span className="text-gray-600 dark:text-gray-400 font-medium">
+                        Walking
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -604,7 +717,9 @@ function Header({ room }: { room: Room }) {
             </span>
           )}
           {formattedDate && (
-            <span className="hidden sm:inline text-gray-300 dark:text-gray-750">|</span>
+            <span className="hidden sm:inline text-gray-300 dark:text-gray-750">
+              |
+            </span>
           )}
           <span className="font-semibold text-blue-600 dark:text-blue-400">
             {room.meetingDirection === "from-venue"
@@ -620,18 +735,28 @@ function Header({ room }: { room: Room }) {
   );
 }
 
-function Podium({ winners, onViewMap }: { winners: LocationResult[]; onViewMap: (loc: LocationResult) => void }) {
+function Podium({
+  winners,
+  onViewMap,
+}: {
+  winners: LocationResult[];
+  onViewMap: (loc: LocationResult) => void;
+}) {
   if (winners.length === 1) {
     const w = winners[0];
     return (
-      <div className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/30 p-6 text-center space-y-3 shadow-sm">
+      <div className="rounded-2xl border border-amber-200 dark:border-amber-900 bg-linear-to-br from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/30 p-6 text-center space-y-3 shadow-sm">
         <Trophy className="w-12 h-12 text-amber-500 mx-auto" />
         <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
           Winner
         </p>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{w.name}</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {w.name}
+        </h2>
         {w.description && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">{w.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {w.description}
+          </p>
         )}
         <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
           {w.votes} {w.votes === 1 ? "vote" : "votes"}
@@ -662,7 +787,9 @@ function Podium({ winners, onViewMap }: { winners: LocationResult[]; onViewMap: 
     <div className="space-y-4">
       <div className="text-center space-y-2">
         <Trophy className="w-12 h-12 text-amber-500 mx-auto" />
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">It&apos;s a tie!</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          It&apos;s a tie!
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
           {winners.length} locations tied for first place.
         </p>
@@ -673,7 +800,9 @@ function Podium({ winners, onViewMap }: { winners: LocationResult[]; onViewMap: 
             key={w._id}
             className="flex-1 min-w-[220px] rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50/70 dark:bg-amber-950/30 p-4 space-y-2 shadow-xs"
           >
-            <h3 className="text-base font-bold text-gray-900 dark:text-white">{w.name}</h3>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              {w.name}
+            </h3>
             {w.description && (
               <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                 {w.description}
@@ -710,7 +839,9 @@ function Podium({ winners, onViewMap }: { winners: LocationResult[]; onViewMap: 
 function NoVotesCard() {
   return (
     <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/40 p-6 text-center space-y-2">
-      <p className="font-semibold text-gray-700 dark:text-gray-300">No votes were cast</p>
+      <p className="font-semibold text-gray-700 dark:text-gray-300">
+        No votes were cast
+      </p>
       <p className="text-sm text-gray-500 dark:text-gray-400">
         Voting closed before anyone submitted a first preference.
       </p>
@@ -768,7 +899,9 @@ function Breakdown({
                     />
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 mt-0.5">No first-preference votes</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    No first-preference votes
+                  </p>
                 )}
               </div>
               <div className="text-right shrink-0">

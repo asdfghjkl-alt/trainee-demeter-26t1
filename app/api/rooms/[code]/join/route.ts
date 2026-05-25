@@ -89,8 +89,9 @@ export const POST = apiHandler(
     if (token && value.location) {
       try {
         const searchText = encodeURIComponent(value.location);
+        const countryParam = room.country && room.country !== "global" ? `&country=${room.country}` : "";
         const geoResponse = await fetch(
-          `https://api.mapbox.com/search/geocode/v6/forward?q=${searchText}&country=au&limit=1&access_token=${token}`
+          `https://api.mapbox.com/search/geocode/v6/forward?q=${searchText}${countryParam}&limit=1&access_token=${token}`
         );
         if (geoResponse.ok) {
           const geoData = await geoResponse.json();

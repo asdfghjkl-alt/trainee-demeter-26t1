@@ -210,7 +210,16 @@ export default function VotingView({
             ? `/api/routes/transit?originLat=${startLat}&originLng=${startLng}&destLat=${endLat}&destLng=${endLng}${room.date ? `&date=${encodeURIComponent(room.date)}` : ""}`
             : `https://api.mapbox.com/directions/v5/mapbox/${profile}/${startLng},${startLat};${endLng},${endLat}?access_token=${token}&geometries=geojson`;
 
-          const res = await fetch(url);
+          const headers: HeadersInit = {};
+          if (isTransit) {
+            try {
+              headers["x-timezone"] = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+              // ignore
+            }
+          }
+
+          const res = await fetch(url, { headers });
           if (res.ok) {
             const data = await res.json();
             if (isTransit) {

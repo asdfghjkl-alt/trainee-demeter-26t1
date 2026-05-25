@@ -44,8 +44,8 @@ export default async function JoinPage({ params }: Props) {
   const meetingDirection = room.meetingDirection || "to-venue";
 
   if (session) {
-    return <PreferencesForm code={code} user={user} meetingDirection={meetingDirection} />;
+    return <PreferencesForm code={code} user={user} meetingDirection={meetingDirection} country={room.country} />;
   }
 
-  return <PreferencesForm code={code} meetingDirection={meetingDirection} />;
+  return <PreferencesForm code={code} meetingDirection={meetingDirection} country={room.country} />;
 }
