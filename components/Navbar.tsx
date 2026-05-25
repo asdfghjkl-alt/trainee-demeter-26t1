@@ -67,12 +67,12 @@ export default function Navbar() {
             {/* Left Side: Brand and Navigation Links */}
             <div className="flex items-center space-x-8">
               <Link href="/" className="flex items-center space-x-2 group">
-                <Image 
-                  src="/logo.png" 
-                  alt="Rendezvous Logo" 
-                  width={32}
-                  height={32}
-                  className="opacity-90 group-hover:opacity-100 transition-opacity" 
+                <Image
+                  src="/logo.png"
+                  alt="Rendezvous Logo"
+                  width={50}
+                  height={50}
+                  className="opacity-90 group-hover:opacity-100 transition-opacity"
                 />
                 <span className="text-2xl font-bold text-cyan-600 dark:text-cyan-600">
                   Rendezvous
