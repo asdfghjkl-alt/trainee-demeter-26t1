@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@here/flexpolyline": "^0.1.0",
     "@hookform/resolvers": "^5.2.2",
     "@turf/area": "^7.3.5",
     "@turf/boolean-point-in-polygon": "^7.3.5",

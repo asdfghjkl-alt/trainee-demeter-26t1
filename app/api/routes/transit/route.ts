@@ -229,13 +229,144 @@ export const GET = apiHandler(async (req: NextRequest) => {
       }
     } catch (error) {
       console.error(
-        "TfNSW API failed, falling back to Targomo Route API:",
+        "TfNSW API failed, falling back to HERE Transit API:",
         error,
       );
     }
   }
 
-  // Fallback 1: Targomo Transit Routing
+  // Fallback 1: HERE Transit API
+  const hereKey = process.env.HERE_API_KEY;
+  if (hereKey) {
+    try {
+      let url = `https://transit.router.hereapi.com/v8/routes?origin=${originLat},${originLng}&destination=${destLat},${destLng}&return=polyline,travelSummary&apikey=${hereKey}`;
+      if (dateParam) {
+        const d = new Date(dateParam);
+        if (!isNaN(d.getTime())) {
+          url += `&departureTime=${d.toISOString()}`;
+        }
+      }
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const flexpolyline = require("@here/flexpolyline");
+
+          const legsData = [];
+          const features = [];
+          let totalDistance = 0;
+          let walkingDistance = 0;
+          let transitDistance = 0;
+          let totalDuration = 0;
+
+          for (const section of route.sections) {
+            const type = section.type; // "pedestrian", "transit"
+            const transportMode = section.transport?.mode || type;
+
+            let mode = "transit";
+            if (transportMode === "pedestrian") mode = "walking";
+            else if (transportMode === "subway") mode = "metro";
+            else if (transportMode === "bus") mode = "bus";
+            else if (
+              transportMode === "lightRail" ||
+              transportMode === "tram" ||
+              transportMode === "cityTrain"
+            )
+              mode = "tram";
+            else if (
+              transportMode === "train" ||
+              transportMode === "regionalTrain" ||
+              transportMode === "intercityTrain" ||
+              transportMode === "highSpeedTrain"
+            )
+              mode = "train";
+            else if (
+              transportMode === "ferry" ||
+              transportMode === "water"
+            )
+              mode = "ferry";
+
+            let durationSec = section.travelSummary?.duration || 0;
+            if (!durationSec && section.departure?.time && section.arrival?.time) {
+              durationSec = Math.round(
+                (new Date(section.arrival.time).getTime() -
+                  new Date(section.departure.time).getTime()) /
+                  1000,
+              );
+            }
+
+            const distanceMeters = section.travelSummary?.length || 0;
+
+            totalDistance += distanceMeters;
+            totalDuration += durationSec;
+            if (mode === "walking") walkingDistance += distanceMeters;
+            else transitDistance += distanceMeters;
+
+            let coords: [number, number][] = [];
+            if (section.polyline) {
+              const decoded = flexpolyline.decode(section.polyline);
+              coords = decoded.polyline.map((p: any) => [p[1], p[0]]); // [lng, lat]
+            } else if (
+              section.departure?.place?.location &&
+              section.arrival?.place?.location
+            ) {
+              coords = [
+                [
+                  section.departure.place.location.lng,
+                  section.departure.place.location.lat,
+                ],
+                [
+                  section.arrival.place.location.lng,
+                  section.arrival.place.location.lat,
+                ],
+              ];
+            }
+
+            legsData.push({
+              mode,
+              duration: durationSec,
+              distance: distanceMeters,
+              coordinates: coords,
+            });
+
+            if (coords.length > 0) {
+              features.push({
+                type: "Feature",
+                properties: { mode },
+                geometry: {
+                  type: "LineString",
+                  coordinates: coords,
+                },
+              });
+            }
+          }
+
+          if (features.length > 0) {
+            return NextResponse.json({
+              distance: totalDistance,
+              walkingDistance,
+              transitDistance,
+              duration: totalDuration,
+              legs: legsData,
+              geometry: {
+                type: "FeatureCollection",
+                features,
+              },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error(
+        "HERE Transit API failed, falling back to Targomo Route API:",
+        error,
+      );
+    }
+  }
+
+  // Fallback 2: Targomo Transit Routing
   const targomoKey = process.env.TARGOMO_API_KEY;
   if (targomoKey) {
     try {
@@ -432,7 +563,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
     }
   }
 
-  // Fallback 2: Mapbox Directions API if TfNSW and Google are not configured or fail
+  // Fallback 3: Mapbox Directions API if TfNSW, HERE, and Targomo are not configured or fail
   try {
     const mapboxToken = process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
