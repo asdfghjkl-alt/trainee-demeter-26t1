@@ -250,6 +250,10 @@ paths:
                   minItems: 1
                   maxItems: 3
                   example: ["60d0fe4f5311236168a109cb"]
+                country:
+                  type: string
+                  description: "Country code restricting the meetup (e.g. 'au', 'us', 'gb') or 'global'"
+                  example: "au"
                 date:
                   type: string
                   format: date-time
@@ -653,6 +657,324 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /categories/{id}:
+    put:
+      operationId: updateCategory
+      tags:
+        - Iteration 1
+        - Category
+      summary: Update a category
+      description: Updates a category's name (Requires Admin).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Category ID
+          example: "60d0fe4f5311236168a109cb"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                  example: "Indoor Activities"
+      responses:
+        "200":
+          description: Category updated successfully
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (Not an admin)
+        "404":
+          description: Category not found
+
+  /rooms/{code}/exists:
+    get:
+      operationId: checkRoomExists
+      tags:
+        - Iteration 1
+        - Room
+      summary: Check if a room exists
+      description: Quickly checks if a room exists and returns its current status without retrieving the whole room object.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      responses:
+        "200":
+          description: Room exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "waiting"
+        "404":
+          description: Room not found
+
+  /rooms/{code}/generate-locations:
+    post:
+      operationId: generateLocations
+      tags:
+        - Iteration 1
+        - Room
+      summary: Auto-generate locations for a room
+      description: Uses the Mapbox API and Targomo routing to compute optimal geographic meeting venues for all participants based on their locations and travel modes.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                travelBudgetMinutes:
+                  type: integer
+                  description: Max travel budget in minutes
+                  example: 30
+                categoryIds:
+                  type: array
+                  items:
+                    type: string
+                  description: Subset of category IDs to search for
+      responses:
+        "200":
+          description: Locations generated successfully
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (Not admin or locations already generated)
+        "409":
+          description: Room not in waiting state
+        "413":
+          description: Payload too large (Too many participants/categories)
+        "422":
+          description: Unprocessable entity (No coordinates/categories)
+        "500":
+          description: Server configuration error
+
+  /rooms/{code}/status/{status}:
+    put:
+      operationId: updateRoomStatus
+      tags:
+        - Iteration 1
+        - Room
+      summary: Update room status
+      description: Changes the status of the room (e.g. from waiting to voting, or voting to completed). Only admin can perform this.
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema:
+            type: string
+          description: The 6-character unique code of the room
+          example: "ABCDEF"
+        - in: path
+          name: status
+          required: true
+          schema:
+            type: string
+            enum: [waiting, voting, completed, closed]
+          description: The new status
+          example: "voting"
+      responses:
+        "200":
+          description: Status updated successfully
+        "400":
+          description: Validation error or no locations
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden (Not admin)
+        "404":
+          description: Room not found
+
+  /routes/transit:
+    get:
+      operationId: getTransitRoute
+      tags:
+        - Iteration 1
+        - Routing
+      summary: Get transit routing steps
+      description: Gets a real-time transit itinerary from Transport for NSW API. Uses `x-timezone` header to format times.
+      parameters:
+        - in: query
+          name: originLng
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: originLat
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: destLng
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: destLat
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: date
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - in: header
+          name: x-timezone
+          required: false
+          schema:
+            type: string
+          description: Timezone string for formatting departure/arrival times (e.g., 'Australia/Sydney')
+      responses:
+        "200":
+          description: Transit route found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  distance:
+                    type: number
+                    description: Total distance in meters
+                    example: 5200
+                  walkingDistance:
+                    type: number
+                    description: Total walking distance in meters
+                    example: 800
+                  transitDistance:
+                    type: number
+                    description: Total transit distance in meters
+                    example: 4400
+                  duration:
+                    type: number
+                    description: Total estimated duration in seconds
+                    example: 1800
+                  isFallbackToDriving:
+                    type: boolean
+                    description: True if transit APIs failed and Mapbox driving was used as a fallback proxy
+                    example: false
+                  legs:
+                    type: array
+                    description: Ordered list of route segments (e.g. walk, bus, train)
+                    items:
+                      type: object
+                      properties:
+                        mode:
+                          type: string
+                          enum: [walking, bus, train, metro, ferry, tram, transit]
+                          example: "train"
+                        duration:
+                          type: number
+                          description: Duration of the leg in seconds
+                          example: 600
+                        distance:
+                          type: number
+                          description: Distance of the leg in meters
+                          example: 4000
+                        coordinates:
+                          type: array
+                          description: Array of [longitude, latitude] arrays representing the leg's path
+                          items:
+                            type: array
+                            items:
+                              type: number
+                  geometry:
+                    type: object
+                    description: A GeoJSON FeatureCollection containing LineStrings for each leg, with properties.mode indicating the transport mode.
+                    properties:
+                      type:
+                        type: string
+                        example: "FeatureCollection"
+                      features:
+                        type: array
+                        items:
+                          type: object
+                example:
+                  distance: 6200
+                  walkingDistance: 800
+                  transitDistance: 5400
+                  duration: 1500
+                  isFallbackToDriving: false
+                  legs:
+                    - mode: "walking"
+                      duration: 300
+                      distance: 400
+                      coordinates:
+                        - [151.2313, -33.9173]
+                        - [151.2290, -33.9160]
+                    - mode: "tram"
+                      duration: 900
+                      distance: 5000
+                      coordinates:
+                        - [151.2290, -33.9160]
+                        - [151.2060, -33.8840]
+                    - mode: "walking"
+                      duration: 300
+                      distance: 400
+                      coordinates:
+                        - [151.2060, -33.8840]
+                        - [151.2068, -33.8835]
+                  geometry:
+                    type: "FeatureCollection"
+                    features:
+                      - type: "Feature"
+                        properties:
+                          mode: "walking"
+                        geometry:
+                          type: "LineString"
+                          coordinates:
+                            - [151.2313, -33.9173]
+                            - [151.2290, -33.9160]
+                      - type: "Feature"
+                        properties:
+                          mode: "tram"
+                        geometry:
+                          type: "LineString"
+                          coordinates:
+                            - [151.2290, -33.9160]
+                            - [151.2060, -33.8840]
+                      - type: "Feature"
+                        properties:
+                          mode: "walking"
+                        geometry:
+                          type: "LineString"
+                          coordinates:
+                            - [151.2060, -33.8840]
+                            - [151.2068, -33.8835]
+        "400":
+          description: Missing coordinates
+        "404":
+          description: No transit routes found
+        "500":
+          description: Server configuration error
+
 components:
   securitySchemes:
     cookieAuth:
@@ -747,6 +1069,10 @@ components:
           type: string
           description: "The 6-character code used to join the room"
           example: "ABCDEF"
+        country:
+          type: string
+          description: "The restricted country code for the room, or 'global'"
+          example: "au"
         adminUser:
           type: string
           description: "The user ID of the room creator/admin"
