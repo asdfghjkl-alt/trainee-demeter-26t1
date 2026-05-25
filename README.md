@@ -145,3 +145,11 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 - [ ] **One-Click Export**: Once a venue is finalized, generate one-click "Add to Calendar" (.ics) and "Open in Google/Apple Maps" deep links for all participants.
 - [ ] **Lobby Group Chat**: Provide a mini chat window in the voting lobby for participants to discuss the venue options in real-time.
 - [ ] **Internationalization (i18n)**: Translate the application into multiple languages and format dates, times, and distances (Metric vs Imperial) according to local user conventions.
+
+## Privacy & Data Handling
+
+Because Rendezvous deals with real-time geolocation data, privacy is a core architectural consideration:
+
+- **Ephemeral Rooms:** Meeting rooms and location data are designed to be ephemeral and session-based.
+- **No Persistent Tracking:** Participant live GPS locations are only broadcasted to the active room lobby and are never permanently logged or tracked after the meeting is finalized.
+- **API Data Sharing:** Coordinates are strictly sent to our trusted routing partners (Mapbox, Targomo, TfNSW, HERE) for the sole purpose of calculating travel times and generating isochrones. No personally identifiable information (PII) is attached to these external API requests.
