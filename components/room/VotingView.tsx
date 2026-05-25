@@ -135,6 +135,7 @@ export default function VotingView({
     transitDistance?: number;
     duration: number;
     geometry?: any;
+    isFallbackToDriving?: boolean;
   }
   const [routeDistances, setRouteDistances] = useState<{
     [locationId: string]: RouteDetails;
@@ -221,6 +222,7 @@ export default function VotingView({
                   transitDistance: data.transitDistance,
                   duration: data.duration,
                   geometry: data.geometry,
+                  isFallbackToDriving: data.isFallbackToDriving,
                 },
               };
             } else if (data.routes?.[0]) {
@@ -379,6 +381,7 @@ export default function VotingView({
         <div class="p-2 text-xs text-gray-900 dark:text-white">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
+          ${route && route.isFallbackToDriving ? `<div class="mt-1.5 p-1.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold border border-amber-200 dark:border-amber-800">No public transport detected. <span style="color: #ec4899;">Pink line indicates driving</span>.</div>` : ""}
           ${
             route
               ? `
@@ -427,6 +430,7 @@ export default function VotingView({
         <div class="p-2 text-xs text-gray-900 dark:text-white">
           <p class="font-bold mb-0.5">${location.name}</p>
           ${location.description ? `<p class="text-gray-500 dark:text-gray-400 font-medium truncate max-w-[150px] mb-1">${location.description}</p>` : ""}
+          ${route && route.isFallbackToDriving ? `<div class="mt-1.5 p-1.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-semibold border border-amber-200 dark:border-amber-800">No public transport detected. <span style="color: #ec4899;">Pink line indicates driving</span>.</div>` : ""}
           ${
             route
               ? `
@@ -492,7 +496,7 @@ export default function VotingView({
               "#06b6d4", // cyan
               "tram",
               "#ef4444", // red
-              "#10b981", // default generic transit fallback (emerald green)
+              "#ec4899", // default generic transit fallback (pink)
             ] as any,
             "line-width": [
               "match",
@@ -830,6 +834,23 @@ export default function VotingView({
         {/* Left column: Voting details / List */}
         <div className="lg:col-span-5 space-y-6">
           <VotingHeader room={room} currentParticipant={currentParticipant} />
+
+          {Object.values(routeDistances).some((r) => r.isFallbackToDriving) && (
+            <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                Driving Fallback Used
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-300 pl-6 leading-relaxed">
+                No public transport routes could be detected for some locations,
+                so a{" "}
+                <span style={{ color: "#ec4899" }} className="font-bold">
+                  pink driving route
+                </span>{" "}
+                is shown instead.
+              </p>
+            </div>
+          )}
 
           {room.algorithmNotices && room.algorithmNotices.length > 0 && (
             <div className="rounded-xl border border-amber-200 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">

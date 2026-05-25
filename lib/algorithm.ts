@@ -413,6 +413,8 @@ async function getTravelTimeTfNSW(
     calcNumberOfTrips: "1",
     TfNSWSF: "1",
     version: "10.2.1.42",
+    excludedMeans: "checkbox",
+    exclMOT_11: "1", // Exclude School Buses
   });
 
   const url = `https://api.transport.nsw.gov.au/v1/tp/trip?${params}`;
@@ -421,10 +423,16 @@ async function getTravelTimeTfNSW(
     const res = await fetch(url, {
       headers: { Authorization: `apikey ${tfnswKey}` },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`TfNSW API failed with status ${res.status} in getTravelTimeTfNSW`);
+      return null;
+    }
     const data = await res.json();
     const journeys: any[] = data.journeys ?? [];
-    if (journeys.length === 0) return null;
+    if (journeys.length === 0) {
+      console.log("TfNSW API returned no journeys in getTravelTimeTfNSW");
+      return null;
+    }
 
     // Take the first journey's total duration in minutes
     const legs: any[] = journeys[0].legs ?? [];
@@ -442,7 +450,8 @@ async function getTravelTimeTfNSW(
     if (!firstDep || !lastArr) return null;
     const diffMs = new Date(lastArr).getTime() - new Date(firstDep).getTime();
     return diffMs > 0 ? diffMs / 60000 : null;
-  } catch {
+  } catch (error) {
+    console.error("TfNSW API threw an error in getTravelTimeTfNSW:", error);
     return null;
   }
 }
@@ -553,6 +562,7 @@ export async function scoreCandidates(
           // Fallback 2: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW & Targomo fail
           if (minutes == null) {
             if (p.transportationMode === "transit") {
+              console.log("Using driving fallback for transit travel time computation:", { origin, destination });
               const driveMinutes = await getTravelTimeMapbox(
                 origin,
                 destination,

@@ -77,6 +77,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
         `${destLng}:${destLat}:EPSG:4326`,
       );
       url.searchParams.set("calcNumberOfTrips", "1");
+      url.searchParams.set("excludedMeans", "checkbox");
+      url.searchParams.set("exclMOT_11", "1"); // Exclude School Buses
 
       if (dateParam) {
         const parsedDate = new Date(dateParam);
@@ -203,6 +205,9 @@ export const GET = apiHandler(async (req: NextRequest) => {
             }
 
             if (coords.length > 0) {
+              if (mode === "transit") {
+                console.log("Unmapped transit feature (TfNSW) defaulting to generic mode. Original type:", leg.transportation?.product?.name, leg.transportation?.product?.class);
+              }
               features.push({
                 type: "Feature",
                 properties: { mode },
@@ -225,7 +230,13 @@ export const GET = apiHandler(async (req: NextRequest) => {
               features,
             },
           });
+        } else {
+          console.log("TfNSW API returned no journeys in route.ts");
         }
+      } else {
+        console.error(
+          `TfNSW API failed with status ${response.status} in route.ts`,
+        );
       }
     } catch (error) {
       console.error(
@@ -239,7 +250,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const hereKey = process.env.HERE_API_KEY;
   if (hereKey) {
     try {
-      let url = `https://transit.router.hereapi.com/v8/routes?origin=${originLat},${originLng}&destination=${destLat},${destLng}&return=polyline,travelSummary&apikey=${hereKey}`;
+      let url = `https://transit.router.hereapi.com/v8/routes?origin=${originLat},${originLng}&destination=${destLat},${destLng}&return=polyline,travelSummary&modes=-flight,-spaceship&apikey=${hereKey}`;
       if (dateParam) {
         const d = new Date(dateParam);
         if (!isNaN(d.getTime())) {
@@ -251,7 +262,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
       if (res.ok) {
         const data = await res.json();
         if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
+          const route =
+            data.routes.find(
+              (r: any) =>
+                !r.sections.some((s: any) => {
+                  const tm = s.transport?.mode || s.type;
+                  return tm === "car" || tm === "driving";
+                }),
+            ) || data.routes[0];
+
           const flexpolyline = require("@here/flexpolyline");
 
           const legsData = [];
@@ -264,6 +283,10 @@ export const GET = apiHandler(async (req: NextRequest) => {
           for (const section of route.sections) {
             const type = section.type; // "pedestrian", "transit"
             const transportMode = section.transport?.mode || type;
+
+            if (transportMode === "car" || transportMode === "driving") {
+              continue;
+            }
 
             let mode = "transit";
             if (transportMode === "pedestrian") mode = "walking";
@@ -282,14 +305,15 @@ export const GET = apiHandler(async (req: NextRequest) => {
               transportMode === "highSpeedTrain"
             )
               mode = "train";
-            else if (
-              transportMode === "ferry" ||
-              transportMode === "water"
-            )
+            else if (transportMode === "ferry" || transportMode === "water")
               mode = "ferry";
 
             let durationSec = section.travelSummary?.duration || 0;
-            if (!durationSec && section.departure?.time && section.arrival?.time) {
+            if (
+              !durationSec &&
+              section.departure?.time &&
+              section.arrival?.time
+            ) {
               durationSec = Math.round(
                 (new Date(section.arrival.time).getTime() -
                   new Date(section.departure.time).getTime()) /
@@ -332,6 +356,9 @@ export const GET = apiHandler(async (req: NextRequest) => {
             });
 
             if (coords.length > 0) {
+              if (mode === "transit") {
+                console.log("Unmapped transit feature (HERE) defaulting to generic mode. Original type:", section.transport?.mode, section.type);
+              }
               features.push({
                 type: "Feature",
                 properties: { mode },
@@ -532,6 +559,9 @@ export const GET = apiHandler(async (req: NextRequest) => {
                 coordinates: coords,
               });
 
+              if (mode === "transit") {
+                console.log("Unmapped transit feature (Targomo) defaulting to generic mode. Original type:", f.properties);
+              }
               features.push({
                 type: "Feature",
                 properties: { mode },
@@ -565,35 +595,44 @@ export const GET = apiHandler(async (req: NextRequest) => {
 
   // Fallback 3: Mapbox Directions API if TfNSW, HERE, and Targomo are not configured or fail
   try {
-    const mapboxToken = process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const mapboxToken =
+      process.env.MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
       console.error("Missing Mapbox token for transit route fallback");
       return NextResponse.json(
         { message: "Unable to calculate route: missing mapbox token" },
-        { status: 500 }
+        { status: 500 },
       );
     }
-    
+
+    console.log("Using driving fallback in transit route for:", {
+      originLat,
+      originLng,
+      destLat,
+      destLng,
+    });
     const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${originLng},${originLat};${destLng},${destLat}?access_token=${mapboxToken}&geometries=geojson`;
-    
+
     // Pass along the referer so URL-restricted Mapbox tokens work server-side
     const referer = req.headers.get("referer") || req.nextUrl?.origin || "";
     const headers: Record<string, string> = {};
     if (referer) {
       headers["Referer"] = referer;
     }
-    
+
     const res = await fetch(url, { headers });
     if (res.ok) {
       const data = await res.json();
       const route = data.routes?.[0];
       if (route) {
         // Mock a single transit leg using driving geometries
+        console.log("Mapbox Fallback used. Generated a generic transit feature.");
         return NextResponse.json({
           distance: route.distance,
           walkingDistance: 0,
           transitDistance: route.distance,
           duration: route.duration * 1.3, // add some transit buffer
+          isFallbackToDriving: true,
           legs: [
             {
               mode: "transit",
