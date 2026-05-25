@@ -141,14 +141,6 @@ export default function PreferencesForm({
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      console.log({
-        name: data.name,
-        location: data.location,
-        dietaryRequirements: data.dietaryRequirements,
-        dietaryNotes: data.dietaryNotes,
-        preferences: data.preferences,
-        transportationMode: data.transportationMode,
-      });
       await api.post(`/rooms/${code}/join`, {
         name: data.name,
         location: data.location,

@@ -110,10 +110,8 @@ export default function SuburbAutocomplete({
         }
 
         const data = await res.json();
-        console.log(data.features)
         if (data.features) {
           setSuggestions(data.features);
-          console.log(data.features)
           setIsOpen(true);
         } else {
           setSuggestions([]);

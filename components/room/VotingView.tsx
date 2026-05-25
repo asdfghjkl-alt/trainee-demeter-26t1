@@ -359,12 +359,6 @@ export default function VotingView({
 
   // Show details of a location on the map using a popup, travel distance/duration details, and focus center
   const showLocationDetails = (location: Location) => {
-    console.log(
-      "showLocationDetails called for:",
-      location.name,
-      "mapInstance is present:",
-      !!mapInstance,
-    );
     setSelectedMapLocationId(location._id || null);
 
     if (
@@ -372,7 +366,6 @@ export default function VotingView({
       mapInstance.getCanvasContainer &&
       mapInstance.getCanvasContainer()
     ) {
-      console.log("Executing easeTo for:", location.name);
       mapInstance.easeTo({
         center: [location.longitude, location.latitude],
         duration: 400,
@@ -609,10 +602,6 @@ export default function VotingView({
         .addTo(mapInstance);
 
       const handleInteraction = (e: Event) => {
-        console.log(
-          `Marker interaction [${e.type}] triggered for:`,
-          location.name,
-        );
         e.stopPropagation();
         showLocationDetailsRef.current(location);
       };
