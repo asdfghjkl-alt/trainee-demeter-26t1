@@ -8,8 +8,8 @@ export async function proxy(request: NextRequest) {
   
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'nonce-${nonce}' ${isDev ? "'unsafe-eval'" : ""} https://api.mapbox.com https://unpkg.com;
-    style-src 'self' 'unsafe-inline' https://api.mapbox.com https://unpkg.com;
+    script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${isDev ? "'unsafe-eval'" : ""} https://api.mapbox.com https://unpkg.com;
+    style-src 'self' 'nonce-${nonce}' https://api.mapbox.com https://unpkg.com;
     img-src 'self' blob: data: https://api.mapbox.com https://*.mapbox.com;
     connect-src 'self' https://api.mapbox.com https://*.mapbox.com https://events.mapbox.com https://api.transport.nsw.gov.au;
     worker-src 'self' blob:;
