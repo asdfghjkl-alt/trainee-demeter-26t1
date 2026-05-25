@@ -109,7 +109,9 @@ To access the documentation:
 2. Navigate to [http://localhost:3000/api-docs](http://localhost:3000/api-docs) in your browser.
 3. You can also view or lint the raw OpenAPI 3.0 specification file directly at `public/swagger.yaml`.
 
-## TODOs / Known Algorithm Limitations
+## TODOs & Future Work
+
+### Algorithm Limitations
 
 While the algorithm uses a highly robust Dual-Proximity search to avoid geographical pitfalls, it still has a few known limitations to be improved in the future:
 
@@ -117,3 +119,26 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 - [ ] **Mapbox POI Quality ("Ghost Venues")**: The Mapbox Search API occasionally returns outdated venues (permanently closed businesses) or administrative locations tagged incorrectly (e.g. an office staff cafeteria tagged as a public cafe). Integrating Google Places or Yelp API would improve POI quality.
 - [ ] **Mixed-Mode ("Park & Ride") Support**: The algorithm assumes participants use a single mode (either strictly driving or strictly transit). It cannot calculate commutes where a user drives to a station and takes an express train to the destination.
 - [ ] **API Slice Limits**: To prevent rate limits, the algorithm only feeds a maximum of 30 candidate venues into the TfNSW/Mapbox travel-time matrix. It is mathematically possible that the 31st venue could have scored slightly better, but is dropped to save API calls.
+
+### Algorithm Enhancements
+
+- [ ] **Asymmetric Tolerance Thresholds**: Account for varying individual travel willingness. Instead of aiming for a strictly equal travel time for everyone, the algorithm can optimize "fairness" relative to each user's maximum acceptable travel time (e.g., User A is willing to travel 90 mins, User B only 30 mins).
+- [ ] **Weighted Preferences**: Allow users to weight their preferences (e.g., "Must have Wi-Fi" vs "Nice to have Wi-Fi") to provide more granular scoring for auto-generated venues.
+- [ ] **Time-of-Day Traffic Predictions**: Incorporate predictive traffic models to adjust travel time estimates based on the specific planned time of the meeting, rather than just current traffic.
+- [ ] **Cost-Aware Routing**: Factor in toll roads, parking costs, or public transit fares into the "fairness" score to equalize financial burden alongside travel time.
+- [ ] **Multi-Destination Itinerary**: Extend the algorithm to not just find a single meeting spot, but to sequence multiple locations (e.g. dinner then drinks) for an optimal group route.
+- [ ] **Micro-Mobility Integration**: Factor in e-scooters and shared bikes (Lime, Bird, etc.) as valid last-mile connection options when calculating transit times and isochrone boundaries.
+- [ ] **Accessibility (Step-Free) Routing**: Provide strict filters to query transit APIs for step-free routes and wheelchair-friendly stations, adjusting the fairness score accordingly.
+- [ ] **Carbon-Efficient Routing**: Calculate the CO2 emissions of different routes and introduce a "green" bias to promote environmentally friendly meeting spots.
+
+### Application Enhancements
+
+- [ ] **User Accounts & History**: Implement user authentication to save favorite locations, past meeting spots, and frequent contacts.
+- [ ] **Real-Time WebSockets**: Transition from polling to WebSockets for instant, real-time updates during the live voting phase and lobby interactions.
+- [ ] **Calendar Integration**: Allow syncing with Google Calendar or Outlook to automatically suggest meeting times alongside meeting places.
+- [ ] **Accessibility (a11y) Improvements**: Enhance the drag-and-drop voting interface and color-coded map legends for screen readers and keyboard-only navigation.
+- [ ] **Native Mobile Application**: Port the web app to a native mobile application (e.g., React Native) for deep OS integration, rich push notifications, and background location services.
+- [ ] **Guest List & RSVP Tracking**: Allow admins to send formal invites via email/SMS, track RSVPs, and automatically drop users who decline from the algorithm's calculations.
+- [ ] **One-Click Export**: Once a venue is finalized, generate one-click "Add to Calendar" (.ics) and "Open in Google/Apple Maps" deep links for all participants.
+- [ ] **Lobby Group Chat**: Provide a mini chat window in the voting lobby for participants to discuss the venue options in real-time.
+- [ ] **Internationalization (i18n)**: Translate the application into multiple languages and format dates, times, and distances (Metric vs Imperial) according to local user conventions.
