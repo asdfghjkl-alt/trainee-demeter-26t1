@@ -106,39 +106,6 @@ export async function clearSession() {
   cookieStore.set(JWT_NAME, "", { expires: new Date(0) });
 }
 
-/**
- * Refreshes the session JWT cookie on the given response, if a valid token is present.
- * The caller is responsible for creating the NextResponse (so request headers like
- * x-nonce can be forwarded to the renderer via NextResponse.next({ request })).
- */
-export async function applySessionRefresh(
-  request: NextRequest,
-  response: NextResponse,
-): Promise<void> {
-  const token = request.cookies.get(JWT_NAME)?.value;
-  if (!token) return;
-
-  try {
-    const { payload } = await jwtVerify(token, secret);
-    const newToken = await new SignJWT(payload)
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime(JWT_EXPIRATION)
-      .sign(secret);
-
-    response.cookies.set(JWT_NAME, newToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      expires: new Date(Date.now() + JWT_SESSION_DURATION),
-    });
-  } catch {
-    // Invalid token — leave the response untouched; the existing cookie will expire naturally.
-  }
-}
-
-/** @deprecated Use applySessionRefresh instead. */
 export async function updateSessionMiddleware(request: NextRequest) {
   const token = request.cookies.get(JWT_NAME)?.value;
   if (!token) return NextResponse.next();
@@ -165,4 +132,3 @@ export async function updateSessionMiddleware(request: NextRequest) {
     return NextResponse.next();
   }
 }
-
