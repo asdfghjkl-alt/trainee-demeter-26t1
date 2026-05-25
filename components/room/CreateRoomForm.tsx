@@ -602,22 +602,27 @@ export default function CreateRoomForm({
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <SuburbAutocomplete
-                label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location"}
-                value={watch("location")}
-                onChange={(val) => setValue("location", val, { shouldValidate: true })}
-                error={errors.location}
-                placeholder={
-                  useCurrentLocation && detectedSuburb
-                    ? detectedSuburb
-                    : useCurrentLocation
-                      ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your starting location...")
-                      : "e.g. Kensington"
-                }
-                readOnly={useCurrentLocation}
-                required={!useCurrentLocation}
-                country={watch("country")}
-              />
+              <div>
+                <SuburbAutocomplete
+                  label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location"}
+                  value={watch("location")}
+                  onChange={(val) => setValue("location", val, { shouldValidate: true })}
+                  error={errors.location}
+                  placeholder={
+                    useCurrentLocation && detectedSuburb
+                      ? detectedSuburb
+                      : useCurrentLocation
+                        ? (meetingDirection === "from-venue" ? "Detecting your return location..." : "Detecting your starting location...")
+                        : "e.g. Kensington"
+                  }
+                  readOnly={useCurrentLocation}
+                  required={!useCurrentLocation}
+                  country={watch("country")}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Note: Locations inputted should be suburbs (or equivalent in a different country).
+                </p>
+              </div>
 
               <div>
                 <label

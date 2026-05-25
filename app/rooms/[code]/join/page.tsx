@@ -3,7 +3,7 @@ import PreferencesForm from "@/components/join/PreferencesForm";
 import { getSession } from "@/lib/session";
 import { getGuestParticipantId } from "@/lib/guest";
 import connectToDatabase from "@/lib/mongodb";
-import { Room } from "@/database";
+import { Room, Category } from "@/database";
 
 interface Props {
   params: Promise<{ code: string }>;
@@ -12,9 +12,12 @@ interface Props {
 export default async function JoinPage({ params }: Props) {
   const { code } = await params;
 
+  // Ensure Category model is initialized
+  Category;
+
   // Verify the room exists and is still accepting participants
   await connectToDatabase();
-  const room = await Room.findOne({ code }).lean();
+  const room = await Room.findOne({ code }).populate("categories").lean();
   if (!room) notFound();
 
   const session = await getSession();
@@ -43,9 +46,16 @@ export default async function JoinPage({ params }: Props) {
 
   const meetingDirection = room.meetingDirection || "to-venue";
 
+  const roomDetails = {
+    name: room.name,
+    date: room.date ? room.date.toISOString() : null,
+    description: room.description,
+    categories: (room.categories || []).map((c: any) => c.name),
+  };
+
   if (session) {
-    return <PreferencesForm code={code} user={user} meetingDirection={meetingDirection} country={room.country} />;
+    return <PreferencesForm code={code} user={user} meetingDirection={meetingDirection} country={room.country} roomDetails={roomDetails} />;
   }
 
-  return <PreferencesForm code={code} meetingDirection={meetingDirection} country={room.country} />;
+  return <PreferencesForm code={code} meetingDirection={meetingDirection} country={room.country} roomDetails={roomDetails} />;
 }

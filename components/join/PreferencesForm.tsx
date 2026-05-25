@@ -24,11 +24,18 @@ export default function PreferencesForm({
   user,
   meetingDirection = "to-venue",
   country = "au",
+  roomDetails,
 }: {
   code: string;
   user?: { name?: string };
   meetingDirection?: "to-venue" | "from-venue";
   country?: string;
+  roomDetails?: {
+    name: string;
+    date?: string | null;
+    description?: string;
+    categories?: string[];
+  };
 }) {
   const router = useRouter();
   const {
@@ -165,13 +172,50 @@ export default function PreferencesForm({
   return (
     <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 pb-16">
       {/* HEADER */}
-      <h1 className="mt-10 mb-2 text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white">
-        Plans for today?
-      </h1>
+      <div className="mb-8 mt-10">
+        <p className="text-sm font-semibold uppercase tracking-widest text-cyan-600 dark:text-cyan-400 mb-2">
+          Join Meetup
+        </p>
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">
+          {roomDetails?.name || "Plans for today?"}
+        </h1>
+        
+        {roomDetails?.date && (
+          <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300 mb-4 font-medium">
+            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <time dateTime={roomDetails.date} suppressHydrationWarning>
+              {new Date(roomDetails.date).toLocaleString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })}
+            </time>
+          </div>
+        )}
 
-      <p className="text-lg text-gray-600 dark:text-gray-400 max-w-xl">
-        Customise your meetup preferences and travel details to get the most balanced recommendations.
-      </p>
+        {roomDetails?.categories && roomDetails.categories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {roomDetails.categories.map((cat, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold bg-linear-to-r from-cyan-500/10 to-blue-500/10 dark:from-cyan-400/20 dark:to-blue-400/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/20 dark:border-cyan-400/30"
+              >
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl leading-relaxed">
+          {roomDetails?.description || "Customise your meetup preferences and travel details to get the most balanced recommendations."}
+        </p>
+      </div>
 
       {/* FORM (full width card) */}
       <div className="mt-10 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-100/70 dark:bg-gray-900/40 p-6 shadow-sm backdrop-blur-sm">
@@ -219,6 +263,7 @@ export default function PreferencesForm({
             <p className="text-sm text-red-500">{locationError}</p>
           )}
 
+          <div>
             <SuburbAutocomplete
               label={meetingDirection === "from-venue" ? "Home Suburb / End Destination" : "Starting Location / Suburb"}
               value={watch("location")}
@@ -235,6 +280,10 @@ export default function PreferencesForm({
               required={!useCurrentLocation}
               country={country}
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              Note: Locations inputted should be suburbs (or equivalent in a different country).
+            </p>
+          </div>
 
           {/* Dietary Requirements */}
           <div>

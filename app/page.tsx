@@ -51,6 +51,9 @@ export default function Home() {
                 Stop arguing over travel times. We calculate the best possible
                 meeting point based on location and preferences for the best
                 points to connect.
+                <span className="block mt-4 text-base text-gray-500 dark:text-gray-400">
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">Note:</span> Locations inputted should be suburbs (or equivalent in a different country).
+                </span>
               </p>
             </div>
 
