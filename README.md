@@ -14,8 +14,8 @@ Find the fairest place to meet. Rendezvous calculates the best possible meeting 
 
 - **Admin Location Search**: Interactive search box using the Mapbox Search Box API with suggestion listing and full details retrieval. Uses session token grouping and debouncing to keep API consumption well within the Mapbox free tier.
 - **Admin Lobby Overview Map**: Before voting begins, the admin sees a persistent Mapbox map showing all participants' geocoded positions (pulsing dots) and all added/auto-generated venue markers with color-coded legends. The map preserves pan/zoom state across live polling updates.
-- **Deferred Auto-Generation**: Venue auto-generation only triggers when the admin clicks "Start Voting", preventing needless API calls during lobby setup. Admin-added locations are always preserved.
-- **Multi-Modal Street Routing**: Uses the Mapbox Directions API to fetch street-level travel distances and times for participants. Supported profiles: driving, walking, cycling, and public transit (via a road network proxy).
+- **Smart Auto-Generation**: Venue auto-generation only triggers when the admin explicitly opts-in and clicks "Start Voting". To prevent abuse and confusion, it is limited to a single generation per room, while admin-added locations are always preserved.
+- **Hybrid Transit Routing Architecture**: Provides pixel-perfect multi-modal routes anywhere in the world using a robust 4-tier fallback system: TfNSW (for Sydney) -> HERE Transit API (Global shapes) -> Targomo (Desire lines) -> Mapbox Directions (Driving fallback).
 - **Persistent Interactive Map**: Persistently shows proposed venues and user location. Clicking location cards or pins draws the active road route path dynamically.
 - **Real-Time GPS Tracking**: Places a pulsing blue dot representing the user's current GPS location on the voting map, automatically fitting bounds to show all candidates relative to the user.
 - **Interactive Drag-and-Drop Voting**: Rank options dynamically by dragging candidate cards in real time before submitting votes.
@@ -43,6 +43,7 @@ NEXT_PUBLIC_BASE_URL='http://localhost:3000'
 NEXT_PUBLIC_MAPBOX_TOKEN='your_mapbox_public_token_here'
 MAPBOX_SECRET_TOKEN='your_mapbox_secret_token_here'
 TFNSW_API_KEY='your_tfnsw_api_key_here'
+HERE_API_KEY='your_here_api_key_here'
 TARGOMO_API_KEY='your_targomo_api_key_here'
 ```
 
@@ -62,9 +63,18 @@ The public transit routing features query the official **TfNSW Trip Planner API*
 4. Retrieve your generated key from the application dashboard.
 5. Set `TFNSW_API_KEY` in your `.env` file to this key. 
 
-*(Note: Because TfNSW is a state-level agency, true public transit routing and map-drawn transit lines will only work for locations within New South Wales, Australia. If you use the app outside of NSW, or if the key is missing/invalid, the app will gracefully fall back to the **Google Maps Directions API** to draw accurate transit lines, provided you have set `GOOGLE_MAPS_API_KEY` in your `.env`. Otherwise, it falls back to a generic road-following line via Mapbox).*
+*(Note: Because TfNSW is a state-level agency, true public transit routing and map-drawn transit lines will only work for locations within New South Wales, Australia. If you use the app outside of NSW, or if the key is missing/invalid, the app will gracefully fall back to the **HERE Transit API** to draw accurate global transit lines. If that fails, it falls back to **Targomo** for straight desire-lines).*
 
-### 5. Getting a Targomo API Key (Transit Isochrones)
+### 5. Getting a HERE API Key (Global Transit Routing)
+
+The routing engine uses **HERE Technologies** as a robust global fallback for drawing curved transit paths outside of Sydney.
+1. Register for a free account at the [HERE Developer Portal](https://developer.here.com/).
+2. Generate a new REST API Key.
+3. Open your `.env` file and set `HERE_API_KEY='your_key_here'`.
+
+*(If this key is missing, the algorithm falls back to Targomo).*
+
+### 6. Getting a Targomo API Key (Transit Isochrones)
 
 The algorithm uses **Targomo** to draw accurate transit boundary polygons to find meeting spots.
 1. Register for a free account at [Targomo](https://www.targomo.com/).
@@ -74,7 +84,7 @@ The algorithm uses **Targomo** to draw accurate transit boundary polygons to fin
 
 *(If this key is missing, the algorithm gracefully falls back to a Mapbox cycling heuristic).*
 
-### 6. Install Dependencies & Run
+### 7. Install Dependencies & Run
 
 Install the node modules:
 
@@ -90,7 +100,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to view the application!
 
-### 7. API Documentation
+### 8. API Documentation
 
 This project provides an interactive Swagger UI to easily explore and test the backend API endpoints.
 
