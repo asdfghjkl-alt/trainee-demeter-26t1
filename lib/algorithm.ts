@@ -353,7 +353,95 @@ export async function searchPOIs(
 }
 
 // ---------------------------------------------------------------------------
-// Step 5a – Travel time: Mapbox Directions
+// Step 5a – Travel time: Mapbox Matrix API (Batch Processing)
+// ---------------------------------------------------------------------------
+
+async function getTravelTimeMatrixMapbox(
+  participants: ParticipantCoord[],
+  candidates: CandidateLocation[],
+  mode: "driving" | "cycling" | "walking",
+  mapboxToken: string,
+  meetingDirection: "to-venue" | "from-venue"
+): Promise<Map<string, number>> {
+  const results = new Map<string, number>();
+  if (participants.length === 0 || candidates.length === 0) return results;
+
+  const MAX_COORDS = 25;
+  const pChunkSize = 10;
+
+  for (let i = 0; i < participants.length; i += pChunkSize) {
+    const pChunk = participants.slice(i, i + pChunkSize);
+    const cChunkSize = MAX_COORDS - pChunk.length;
+    
+    for (let j = 0; j < candidates.length; j += cChunkSize) {
+      const cChunk = candidates.slice(j, j + cChunkSize);
+      
+      const coords: string[] = [];
+      const sources: number[] = [];
+      const destinations: number[] = [];
+      
+      if (meetingDirection === "to-venue") {
+        pChunk.forEach((p, idx) => {
+          coords.push(`${p.longitude},${p.latitude}`);
+          sources.push(idx);
+        });
+        cChunk.forEach((c, idx) => {
+          coords.push(`${c.longitude},${c.latitude}`);
+          destinations.push(pChunk.length + idx);
+        });
+      } else {
+        cChunk.forEach((c, idx) => {
+          coords.push(`${c.longitude},${c.latitude}`);
+          sources.push(idx);
+        });
+        pChunk.forEach((p, idx) => {
+          coords.push(`${p.longitude},${p.latitude}`);
+          destinations.push(cChunk.length + idx);
+        });
+      }
+      
+      const url = `https://api.mapbox.com/directions-matrix/v1/mapbox/${mode}/${coords.join(";")}?sources=${sources.join(";")}&destinations=${destinations.join(";")}&access_token=${mapboxToken}`;
+      
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+           console.error(`Mapbox Matrix API error: ${res.status}`);
+           continue;
+        }
+        const data = await res.json();
+        const durations = data.durations;
+        
+        if (meetingDirection === "to-venue") {
+          for (let pIdx = 0; pIdx < pChunk.length; pIdx++) {
+            for (let cIdx = 0; cIdx < cChunk.length; cIdx++) {
+              const sec = durations[pIdx]?.[cIdx];
+              if (sec != null) {
+                 const key = `${pChunk[pIdx].latitude},${pChunk[pIdx].longitude}|${cChunk[cIdx].latitude},${cChunk[cIdx].longitude}`;
+                 results.set(key, sec / 60);
+              }
+            }
+          }
+        } else {
+          for (let cIdx = 0; cIdx < cChunk.length; cIdx++) {
+            for (let pIdx = 0; pIdx < pChunk.length; pIdx++) {
+              const sec = durations[cIdx]?.[pIdx];
+              if (sec != null) {
+                 const key = `${pChunk[pIdx].latitude},${pChunk[pIdx].longitude}|${cChunk[cIdx].latitude},${cChunk[cIdx].longitude}`;
+                 results.set(key, sec / 60);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Mapbox Matrix fetch error:", err);
+      }
+    }
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Step 5b – Travel time: Mapbox Directions (Point-to-Point Fallback)
 // ---------------------------------------------------------------------------
 
 async function getTravelTimeMapbox(
@@ -469,8 +557,72 @@ function formatTfNSWTime(d: Date): string {
   return d.toISOString().slice(11, 16).replace(":", "");
 }
 
+async function getTravelTimeMatrixTargomo(
+  participants: ParticipantCoord[],
+  candidates: CandidateLocation[],
+  targomoKey: string,
+  targomoEndpoint: string,
+  meetingDirection: "to-venue" | "from-venue"
+): Promise<Map<string, number>> {
+  const results = new Map<string, number>();
+  if (participants.length === 0 || candidates.length === 0) return results;
+
+  const sources = meetingDirection === "to-venue"
+    ? participants.map((p, i) => ({ id: `p${i}`, lat: p.latitude, lng: p.longitude }))
+    : candidates.map((c, i) => ({ id: `c${i}`, lat: c.latitude, lng: c.longitude }));
+
+  const targets = meetingDirection === "to-venue"
+    ? candidates.map((c, i) => ({ id: `c${i}`, lat: c.latitude, lng: c.longitude }))
+    : participants.map((p, i) => ({ id: `p${i}`, lat: p.latitude, lng: p.longitude }));
+
+  const url = `https://api.targomo.com/${targomoEndpoint}/v1/matrix?key=${targomoKey}`;
+  const payload = {
+    sources,
+    targets,
+    travelType: "transit",
+    maxEdgeWeight: 7200,
+    serializer: "json"
+  };
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) return results;
+    const data = await res.json();
+    const matrix = data.data?.matrix || {};
+
+    if (meetingDirection === "to-venue") {
+      for (let i = 0; i < participants.length; i++) {
+        for (let j = 0; j < candidates.length; j++) {
+          const sec = matrix[`p${i}`]?.[`c${j}`];
+          if (sec != null) {
+            const key = `${participants[i].latitude},${participants[i].longitude}|${candidates[j].latitude},${candidates[j].longitude}`;
+            results.set(key, sec / 60);
+          }
+        }
+      }
+    } else {
+      for (let j = 0; j < candidates.length; j++) {
+        for (let i = 0; i < participants.length; i++) {
+          const sec = matrix[`c${j}`]?.[`p${i}`];
+          if (sec != null) {
+            const key = `${participants[i].latitude},${participants[i].longitude}|${candidates[j].latitude},${candidates[j].longitude}`;
+            results.set(key, sec / 60);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Targomo Matrix fetch error:", err);
+  }
+  return results;
+}
+
 // ---------------------------------------------------------------------------
-// Step 5c – Travel time: Targomo (transit fallback)
+// Step 5d – Travel time: Targomo (transit point-to-point fallback)
 // ---------------------------------------------------------------------------
 
 async function getTravelTimeTargomo(
@@ -527,66 +679,56 @@ export async function scoreCandidates(
   country?: string,
   targomoEndpoint?: string,
 ): Promise<ScoredLocation[]> {
+  const mapboxMatrix = new Map<string, number>();
+  const targomoMatrix = new Map<string, number>();
+
+  const drivingAndTransitParticipants = participants.filter(p => ["driving", "transit"].includes(p.transportationMode));
+  const cyclingParticipants = participants.filter(p => p.transportationMode === "cycling");
+  const walkingParticipants = participants.filter(p => p.transportationMode === "walking");
+  const transitParticipants = participants.filter(p => p.transportationMode === "transit");
+
+  await Promise.all([
+    getTravelTimeMatrixMapbox(drivingAndTransitParticipants, candidates, "driving", mapboxToken, meetingDirection).then(res => {
+      res.forEach((v, k) => mapboxMatrix.set(k, v));
+    }),
+    getTravelTimeMatrixMapbox(cyclingParticipants, candidates, "cycling", mapboxToken, meetingDirection).then(res => {
+      res.forEach((v, k) => mapboxMatrix.set(k, v));
+    }),
+    getTravelTimeMatrixMapbox(walkingParticipants, candidates, "walking", mapboxToken, meetingDirection).then(res => {
+      res.forEach((v, k) => mapboxMatrix.set(k, v));
+    }),
+    (async () => {
+      if (targomoKey && targomoEndpoint && transitParticipants.length > 0) {
+        const res = await getTravelTimeMatrixTargomo(transitParticipants, candidates, targomoKey, targomoEndpoint, meetingDirection);
+        res.forEach((v, k) => targomoMatrix.set(k, v));
+      }
+    })()
+  ]);
+
   const scored: ScoredLocation[] = await Promise.all(
     candidates.map(async (c) => {
       const travelMinutes: number[] = await Promise.all(
         participants.map(async (p) => {
           let minutes: number | null = null;
+          const key = `${p.latitude},${p.longitude}|${c.latitude},${c.longitude}`;
 
-          const origin =
-            meetingDirection === "from-venue"
-              ? { lat: c.latitude, lng: c.longitude }
-              : { lat: p.latitude, lng: p.longitude };
-          const destination =
-            meetingDirection === "from-venue"
-              ? { lat: p.latitude, lng: p.longitude }
-              : { lat: c.latitude, lng: c.longitude };
+          const origin = meetingDirection === "from-venue" ? { lat: c.latitude, lng: c.longitude } : { lat: p.latitude, lng: p.longitude };
+          const destination = meetingDirection === "from-venue" ? { lat: p.latitude, lng: p.longitude } : { lat: c.latitude, lng: c.longitude };
 
           if (p.transportationMode === "transit" && tfnswKey && country === "au") {
-            minutes = await getTravelTimeTfNSW(
-              origin,
-              destination,
-              tfnswKey,
-              date,
-            );
+            minutes = await getTravelTimeTfNSW(origin, destination, tfnswKey, date);
           }
 
-          if (
-            minutes == null &&
-            p.transportationMode === "transit" &&
-            targomoKey &&
-            targomoEndpoint
-          ) {
-            minutes = await getTravelTimeTargomo(
-              origin,
-              destination,
-              targomoKey,
-              targomoEndpoint,
-            );
+          if (minutes == null && p.transportationMode === "transit" && targomoKey && targomoEndpoint) {
+            minutes = targomoMatrix.get(key) ?? null;
           }
 
-          // Fallback 2: use Mapbox driving-traffic with a 1.5x penalty for transit if TfNSW & Targomo fail
           if (minutes == null) {
             if (p.transportationMode === "transit") {
-              console.log("Using driving fallback for transit travel time computation:", { origin, destination });
-              const driveMinutes = await getTravelTimeMapbox(
-                origin,
-                destination,
-                "driving-traffic",
-                mapboxToken,
-                date,
-              );
-              // In urban areas, transit typically takes ~1.5x longer door-to-door than driving
+              const driveMinutes = mapboxMatrix.get(key);
               minutes = driveMinutes != null ? driveMinutes * 1.5 : null;
             } else {
-              const profile = toMapboxProfile(p.transportationMode);
-              minutes = await getTravelTimeMapbox(
-                origin,
-                destination,
-                profile,
-                mapboxToken,
-                date,
-              );
+              minutes = mapboxMatrix.get(key) ?? null;
             }
           }
 
@@ -595,19 +737,11 @@ export async function scoreCandidates(
       );
 
       const maxMinutes = Math.max(...travelMinutes);
-      const meanMinutes =
-        travelMinutes.reduce((a, b) => a + b, 0) / travelMinutes.length;
-      const variance =
-        travelMinutes.reduce((sum, t) => sum + (t - meanMinutes) ** 2, 0) /
-        travelMinutes.length;
+      const meanMinutes = travelMinutes.reduce((a, b) => a + b, 0) / travelMinutes.length;
+      const variance = travelMinutes.reduce((sum, t) => sum + (t - meanMinutes) ** 2, 0) / travelMinutes.length;
       const stddevMinutes = Math.sqrt(variance);
 
-      // Composite penalty: minimise worst case > mean > variance
-      const score = -(
-        0.5 * maxMinutes +
-        0.3 * meanMinutes +
-        0.2 * stddevMinutes
-      );
+      const score = -(0.5 * maxMinutes + 0.3 * meanMinutes + 0.2 * stddevMinutes);
 
       return {
         ...c,
