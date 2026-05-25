@@ -119,6 +119,9 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 - [ ] **Mapbox POI Quality ("Ghost Venues")**: The Mapbox Search API occasionally returns outdated venues (permanently closed businesses) or administrative locations tagged incorrectly (e.g. an office staff cafeteria tagged as a public cafe). Integrating Google Places or Yelp API would improve POI quality.
 - [ ] **Mixed-Mode ("Park & Ride") Support**: The algorithm assumes participants use a single mode (either strictly driving or strictly transit). It cannot calculate commutes where a user drives to a station and takes an express train to the destination.
 - [ ] **API Slice Limits**: To prevent rate limits, the algorithm only feeds a maximum of 30 candidate venues into the TfNSW/Mapbox travel-time matrix. It is mathematically possible that the 31st venue could have scored slightly better, but is dropped to save API calls.
+- [ ] **Outlier Dominance**: If a group has one extreme outlier (e.g., 5 users in the city, 1 user living 2 hours away), a strict fairness average will drag the meeting spot out to the suburbs, heavily penalizing the majority. The algorithm currently lacks a density-clustering mechanism to handle extreme outliers gracefully.
+- [ ] **Real-Time Disruptions**: The algorithm relies on scheduled transit times and historical traffic. It does not dynamically re-calculate or invalidate routes if there is a sudden train cancellation or major highway accident right before the meeting.
+- [ ] **Jurisdictional & Border Blindspots**: When calculating near state lines or international borders, the routing matrix can fail or give wildly inaccurate transit times if it needs to stitch together two completely separate transit authority APIs.
 
 ### Algorithm Enhancements
 
