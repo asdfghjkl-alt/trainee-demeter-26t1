@@ -715,11 +715,8 @@ export async function scoreCandidates(
           const origin = meetingDirection === "from-venue" ? { lat: c.latitude, lng: c.longitude } : { lat: p.latitude, lng: p.longitude };
           const destination = meetingDirection === "from-venue" ? { lat: p.latitude, lng: p.longitude } : { lat: c.latitude, lng: c.longitude };
 
-          if (p.transportationMode === "transit" && tfnswKey && country === "au") {
-            minutes = await getTravelTimeTfNSW(origin, destination, tfnswKey, date);
-          }
-
-          if (minutes == null && p.transportationMode === "transit" && targomoKey && targomoEndpoint) {
+          // Primary transit routing: Targomo Matrix API
+          if (p.transportationMode === "transit" && targomoKey && targomoEndpoint) {
             minutes = targomoMatrix.get(key) ?? null;
           }
 
