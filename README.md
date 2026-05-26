@@ -117,19 +117,19 @@ To secure the position as the premium, more advanced alternative to tools like "
 
 - [ ] **Financial Fairness (Cost-Aware Routing)**: Integrate basic fare estimation APIs (Uber/Lyft/Transit) alongside travel time to ensure equitable financial splits, preventing one person from paying $50 while others ride free.
 - [ ] **Multi-Destination "Night Out" Itineraries**: Upgrade the algorithm to find a cluster of venues (e.g., Dinner + Drinks) rather than a single point, routing everyone home from the final stop.
-- [ ] **Asymmetric "Willingness" Thresholds**: Allow users to indicate how much they *care* about traveling. Shift the mathematical center of gravity toward the lazier/busier person to model real friend group compromises.
+- [x] **Asymmetric "Willingness" Thresholds**: Allow users to indicate how much they *care* about traveling. Shift the mathematical center of gravity toward the lazier/busier person to model real friend group compromises.
 - [ ] **Dynamic Vibe & Weather Integration**: Ping a weather API based on the meeting time. If it's going to rain, penalize outdoor venues or those requiring long walks from transit, prioritizing indoor spots with door-to-door access.
 - [ ] **The "Late Friend" Adjuster**: Utilize live GPS tracking to dynamically adjust the venue slightly closer to those who were on time, or simply update ETAs live via WebSockets if someone hasn't left their house yet.
-- [ ] **Seamless Logistics & Calendar Handoff**: Once finalized, instantly generate `.ics` calendar invites, "Call Uber/Lyft" deep links with pre-filled destinations, and native Maps routing to eliminate post-voting friction.
+- [x] **Seamless Logistics & Calendar Handoff**: Once finalized, instantly generate `.ics` calendar invites, "Call Uber/Lyft" deep links with pre-filled destinations, and native Maps routing to eliminate post-voting friction.
 
 ### Algorithm Limitations
 
 While the algorithm uses a highly robust Dual-Proximity search to avoid geographical pitfalls, it still has a few known limitations to be improved in the future:
 
-- [ ] **Transit Transfer Penalty**: The TfNSW routing matrix evaluates strict time duration (minutes) but doesn't penalise the *number of transfers*. A 40-minute commute with 0 transfers will currently lose to a 35-minute commute with 3 bus transfers.
+- [ ] **Transit Transfer Penalty**: The Targomo Matrix routing evaluates strict time duration (minutes) but doesn't penalise the *number of transfers*. A 40-minute commute with 0 transfers will currently lose to a 35-minute commute with 3 bus transfers.
 - [ ] **Mapbox POI Quality ("Ghost Venues")**: The Mapbox Search API occasionally returns outdated venues (permanently closed businesses) or administrative locations tagged incorrectly (e.g. an office staff cafeteria tagged as a public cafe). Integrating Google Places or Yelp API would improve POI quality.
 - [ ] **Mixed-Mode ("Park & Ride") Support**: The algorithm assumes participants use a single mode (either strictly driving or strictly transit). It cannot calculate commutes where a user drives to a station and takes an express train to the destination.
-- [ ] **API Slice Limits**: To prevent rate limits, the algorithm only feeds a maximum of 30 candidate venues into the TfNSW/Mapbox travel-time matrix. It is mathematically possible that the 31st venue could have scored slightly better, but is dropped to save API calls.
+- [ ] **API Slice Limits**: To prevent rate limits, the algorithm only feeds a maximum of 30 candidate venues into the Targomo/Mapbox Matrix API. It is mathematically possible that the 31st venue could have scored slightly better, but is dropped to save API calls.
 - [ ] **Outlier Dominance**: If a group has one extreme outlier (e.g., 5 users in the city, 1 user living 2 hours away), a strict fairness average will drag the meeting spot out to the suburbs, heavily penalizing the majority. The algorithm currently lacks a density-clustering mechanism to handle extreme outliers gracefully.
 - [ ] **Real-Time Disruptions**: The algorithm relies on scheduled transit times and historical traffic. It does not dynamically re-calculate or invalidate routes if there is a sudden train cancellation or major highway accident right before the meeting.
 - [ ] **Jurisdictional & Border Blindspots**: When calculating near state lines or international borders, the routing matrix can fail or give wildly inaccurate transit times if it needs to stitch together two completely separate transit authority APIs.

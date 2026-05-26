@@ -38,4 +38,11 @@ export const joinRoomSchema = Joi.object({
       "any.required": "Please select a transportation mode",
       "string.empty": "Please select a transportation mode",
     }),
+
+  willingness: Joi.string()
+    .valid("low", "medium", "high")
+    .default("medium")
+    .messages({
+      "any.only": "Willingness must be one of: low, medium, high",
+    }),
 });

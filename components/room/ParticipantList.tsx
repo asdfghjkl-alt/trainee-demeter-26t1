@@ -65,6 +65,11 @@ export default function ParticipantList({ participants }: Props) {
                 guest
               </span>
             )}
+            {p.willingness && p.willingness !== "medium" && (
+              <span className="text-[10px] uppercase font-bold tracking-wider text-cyan-600 dark:text-cyan-400 shrink-0 bg-cyan-50 dark:bg-cyan-900/30 px-1.5 py-0.5 rounded">
+                {p.willingness === "low" ? "local" : "flexible"}
+              </span>
+            )}
           </div>
 
           {/* Location */}

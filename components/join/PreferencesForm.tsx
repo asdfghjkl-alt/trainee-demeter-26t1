@@ -17,6 +17,7 @@ type EventPreferencesFormData = {
   dietaryNotes: string;
   preferences: string;
   transportationMode: string;
+  willingness: string;
 };
 
 export default function PreferencesForm({
@@ -55,6 +56,7 @@ export default function PreferencesForm({
       dietaryNotes: "",
       preferences: "",
       transportationMode: "",
+      willingness: "medium",
     },
   });
 
@@ -148,6 +150,7 @@ export default function PreferencesForm({
         dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         transportationMode: data.transportationMode,
+        willingness: data.willingness,
       });
       // Redirect to the room lobby on success
       router.push(`/rooms/${code}`);
@@ -362,6 +365,26 @@ export default function PreferencesForm({
             {errors.transportationMode && (
               <p className="mt-1 text-sm text-red-500">
                 {errors.transportationMode.message}
+              </p>
+            )}
+          </div>
+
+          {/* Willingness to Travel */}
+          <div>
+            <label className="my-2 block font-medium text-gray-900 dark:text-white">
+              Willingness to Travel
+            </label>
+            <select
+              {...register("willingness")}
+              className="w-full rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 p-3 text-base transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 outline-none bg-white dark:bg-[#0a0a0a]"
+            >
+              <option value="low">Low (Prefer closer venues)</option>
+              <option value="medium">Medium (Standard)</option>
+              <option value="high">High (Willing to travel further)</option>
+            </select>
+            {errors.willingness && (
+              <p className="mt-1 text-sm text-red-500">
+                {errors.willingness.message}
               </p>
             )}
           </div>

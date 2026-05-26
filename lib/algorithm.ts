@@ -35,6 +35,7 @@ export interface ParticipantCoord {
   latitude: number;
   longitude: number;
   transportationMode: TransportationMode;
+  willingness?: "low" | "medium" | "high";
 }
 
 export interface CandidateLocation {
@@ -57,8 +58,20 @@ export interface ScoredLocation extends CandidateLocation {
 }
 
 // ---------------------------------------------------------------------------
-// Transport-mode helpers
+// Transport-mode and Willingness helpers
 // ---------------------------------------------------------------------------
+
+export function getWillingnessTolerance(willingness?: "low" | "medium" | "high"): number {
+  switch (willingness) {
+    case "low":
+      return 0.5;
+    case "high":
+      return 1.5;
+    case "medium":
+    default:
+      return 1.0;
+  }
+}
 
 /** Maps an app transport mode to the Mapbox Directions / Isochrone profile. */
 function toMapboxProfile(
@@ -440,122 +453,7 @@ async function getTravelTimeMatrixMapbox(
   return results;
 }
 
-// ---------------------------------------------------------------------------
-// Step 5b – Travel time: Mapbox Directions (Point-to-Point Fallback)
-// ---------------------------------------------------------------------------
 
-async function getTravelTimeMapbox(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number },
-  mode: "driving-traffic" | "cycling" | "walking",
-  mapboxToken: string,
-  date?: Date,
-): Promise<number | null> {
-  let url =
-    `https://api.mapbox.com/directions/v5/mapbox/${mode}/` +
-    `${from.lng},${from.lat};${to.lng},${to.lat}` +
-    `?access_token=${mapboxToken}&overview=false`;
-
-  // Mapbox driving-traffic supports depart_at for future times
-  if (mode === "driving-traffic" && date) {
-    const now = new Date();
-    // Only append if it's in the future
-    if (date.getTime() > now.getTime()) {
-      // Mapbox expects ISO8601 without milliseconds, e.g., 2020-11-20T14:30
-      const departAt = date.toISOString().split(".")[0];
-      url += `&depart_at=${departAt}`;
-    }
-  }
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    const durationSec: number | undefined = data.routes?.[0]?.duration;
-    return durationSec != null ? durationSec / 60 : null;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Step 5b – Travel time: TfNSW (transit)
-// ---------------------------------------------------------------------------
-
-async function getTravelTimeTfNSW(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number },
-  tfnswKey: string,
-  date?: Date,
-): Promise<number | null> {
-  const targetDate = date ?? new Date();
-
-  // TfNSW Trip Planner API v1
-  const params = new URLSearchParams({
-    outputFormat: "rapidJSON",
-    coordOutputFormat: "EPSG:4326",
-    depArrMacro: "dep",
-    itdDate: formatTfNSWDate(targetDate),
-    itdTime: formatTfNSWTime(targetDate),
-    type_origin: "coord",
-    name_origin: `${from.lng}:${from.lat}:EPSG:4326`,
-    type_destination: "coord",
-    name_destination: `${to.lng}:${to.lat}:EPSG:4326`,
-    calcNumberOfTrips: "1",
-    TfNSWSF: "1",
-    version: "10.2.1.42",
-    excludedMeans: "checkbox",
-    exclMOT_11: "1", // Exclude School Buses
-  });
-
-  const url = `https://api.transport.nsw.gov.au/v1/tp/trip?${params}`;
-
-  try {
-    const res = await fetch(url, {
-      headers: { Authorization: `apikey ${tfnswKey}` },
-    });
-    if (!res.ok) {
-      console.error(`TfNSW API failed with status ${res.status} in getTravelTimeTfNSW`);
-      return null;
-    }
-    const data = await res.json();
-    const journeys: any[] = data.journeys ?? [];
-    if (journeys.length === 0) {
-      console.log("TfNSW API returned no journeys in getTravelTimeTfNSW");
-      return null;
-    }
-
-    // Take the first journey's total duration in minutes
-    const legs: any[] = journeys[0].legs ?? [];
-    if (legs.length === 0) return null;
-
-    const firstDep: string =
-      legs[0].origin?.departureTimeEstimated ??
-      legs[0].origin?.departureTimePlanned ??
-      "";
-    const lastArr: string =
-      legs[legs.length - 1].destination?.arrivalTimeEstimated ??
-      legs[legs.length - 1].destination?.arrivalTimePlanned ??
-      "";
-
-    if (!firstDep || !lastArr) return null;
-    const diffMs = new Date(lastArr).getTime() - new Date(firstDep).getTime();
-    return diffMs > 0 ? diffMs / 60000 : null;
-  } catch (error) {
-    console.error("TfNSW API threw an error in getTravelTimeTfNSW:", error);
-    return null;
-  }
-}
-
-function formatTfNSWDate(d: Date): string {
-  // YYYYMMDD
-  return d.toISOString().slice(0, 10).replace(/-/g, "");
-}
-
-function formatTfNSWTime(d: Date): string {
-  // HHMM
-  return d.toISOString().slice(11, 16).replace(":", "");
-}
 
 async function getTravelTimeMatrixTargomo(
   participants: ParticipantCoord[],
@@ -621,42 +519,6 @@ async function getTravelTimeMatrixTargomo(
   return results;
 }
 
-// ---------------------------------------------------------------------------
-// Step 5d – Travel time: Targomo (transit point-to-point fallback)
-// ---------------------------------------------------------------------------
-
-async function getTravelTimeTargomo(
-  from: { lat: number; lng: number },
-  to: { lat: number; lng: number },
-  targomoKey: string,
-  targomoEndpoint: string,
-): Promise<number | null> {
-  const url = `https://api.targomo.com/${targomoEndpoint}/v1/time?key=${targomoKey}`;
-  const payload = {
-    sources: [{ id: "src", lat: from.lat, lng: from.lng }],
-    targets: [{ id: "tgt", lat: to.lat, lng: to.lng }],
-    travelType: "transit",
-    maxEdgeWeight: 7200, // 2 hours max search
-    serializer: "json",
-  };
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const targets = data.data?.[0]?.targets ?? [];
-    if (targets.length === 0) return null;
-
-    const travelTimeSeconds = targets[0].travelTime;
-    return travelTimeSeconds ? travelTimeSeconds / 60 : null;
-  } catch {
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Step 5 – Build travel-time matrix and score candidates
@@ -673,10 +535,7 @@ export async function scoreCandidates(
   participants: ParticipantCoord[],
   mapboxToken: string,
   meetingDirection: "to-venue" | "from-venue",
-  date?: Date,
-  tfnswKey?: string,
   targomoKey?: string,
-  country?: string,
   targomoEndpoint?: string,
 ): Promise<ScoredLocation[]> {
   const mapboxMatrix = new Map<string, number>();
@@ -733,12 +592,24 @@ export async function scoreCandidates(
         }),
       );
 
+      const penalizedMinutes = travelMinutes.map((t, idx) => {
+        const tolerance = getWillingnessTolerance(participants[idx].willingness);
+        return t * (1 / tolerance);
+      });
+
+      // Compute actual metrics for displaying to users
       const maxMinutes = Math.max(...travelMinutes);
       const meanMinutes = travelMinutes.reduce((a, b) => a + b, 0) / travelMinutes.length;
       const variance = travelMinutes.reduce((sum, t) => sum + (t - meanMinutes) ** 2, 0) / travelMinutes.length;
       const stddevMinutes = Math.sqrt(variance);
 
-      const score = -(0.5 * maxMinutes + 0.3 * meanMinutes + 0.2 * stddevMinutes);
+      // Compute penalized metrics for the algorithm's score
+      const penalizedMax = Math.max(...penalizedMinutes);
+      const penalizedMean = penalizedMinutes.reduce((a, b) => a + b, 0) / penalizedMinutes.length;
+      const penalizedVariance = penalizedMinutes.reduce((sum, t) => sum + (t - penalizedMean) ** 2, 0) / penalizedMinutes.length;
+      const penalizedStddev = Math.sqrt(penalizedVariance);
+
+      const score = -(0.5 * penalizedMax + 0.3 * penalizedMean + 0.2 * penalizedStddev);
 
       return {
         ...c,
@@ -779,9 +650,11 @@ async function checkIntersectionFeasibility(
   targomoEndpoint?: string,
 ): Promise<Feature<Polygon | MultiPolygon> | null> {
   const isochroneResults = await Promise.all(
-    validParticipants.map((p) =>
-      getIsochrone(p, budgetMinutes, mapboxToken, targomoKey, targomoEndpoint),
-    ),
+    validParticipants.map((p) => {
+      const tolerance = getWillingnessTolerance(p.willingness);
+      const adjustedBudget = budgetMinutes * tolerance;
+      return getIsochrone(p, adjustedBudget, mapboxToken, targomoKey, targomoEndpoint);
+    }),
   );
 
   const validPolygons = isochroneResults.filter(
@@ -845,13 +718,21 @@ export async function generateLocations(opts: {
     );
   }
 
-  // Calculate the geographic midpoint of all participants
+  // Calculate the weighted geographic midpoint of all participants based on willingness
+  const totalWeight = validParticipants.reduce(
+    (sum, p) => sum + 1 / getWillingnessTolerance(p.willingness),
+    0
+  );
   const avgLat =
-    validParticipants.reduce((sum, p) => sum + p.latitude, 0) /
-    validParticipants.length;
+    validParticipants.reduce(
+      (sum, p) => sum + p.latitude * (1 / getWillingnessTolerance(p.willingness)),
+      0
+    ) / totalWeight;
   const avgLng =
-    validParticipants.reduce((sum, p) => sum + p.longitude, 0) /
-    validParticipants.length;
+    validParticipants.reduce(
+      (sum, p) => sum + p.longitude * (1 / getWillingnessTolerance(p.willingness)),
+      0
+    ) / totalWeight;
   const geographicMidpoint = { lat: avgLat, lng: avgLng };
 
   let targomoEndpoint: string | undefined;
@@ -887,9 +768,11 @@ export async function generateLocations(opts: {
     // To ensure the app doesn't crash on Step 3 (if we still need a polygon for some reason)
     // we fetch the max isochrones again and use the fallback from intersectIsochrones
     const isochroneResults = await Promise.all(
-      validParticipants.map((p) =>
-        getIsochrone(p, travelBudgetMinutes, mapboxToken, targomoKey, targomoEndpoint),
-      ),
+      validParticipants.map((p) => {
+        const tolerance = getWillingnessTolerance(p.willingness);
+        const adjustedBudget = travelBudgetMinutes * tolerance;
+        return getIsochrone(p, adjustedBudget, mapboxToken, targomoKey, targomoEndpoint);
+      }),
     );
     const validPolygons = isochroneResults.filter(
       (p): p is Feature<Polygon | MultiPolygon> => p !== null,
@@ -968,10 +851,7 @@ export async function generateLocations(opts: {
     validParticipants,
     mapboxToken,
     meetingDirection,
-    date,
-    tfnswKey,
     targomoKey,
-    country,
     targomoEndpoint,
   );
 

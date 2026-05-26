@@ -460,7 +460,7 @@ export default function VotingView({
           ? route.geometry
           : {
               type: "Feature" as const,
-              properties: {},
+              properties: { mode: currentParticipant?.transportationMode || "driving" },
               geometry: route.geometry,
             };
 
@@ -488,6 +488,10 @@ export default function VotingView({
               ["coalesce", ["get", "mode"], "transit"],
               "walking",
               "#3b82f6", // blue
+              "driving",
+              "#ec4899", // pink
+              "cycling",
+              "#10b981", // emerald green
               "train",
               "#f97316", // orange
               "bus",
@@ -498,7 +502,7 @@ export default function VotingView({
               "#06b6d4", // cyan
               "tram",
               "#ef4444", // red
-              "#ec4899", // default generic transit fallback (pink)
+              "#94a3b8", // fallback (slate gray)
             ] as any,
             "line-width": [
               "match",

@@ -34,6 +34,7 @@ export interface Participant {
   isAdmin: boolean;
   latitude?: number;
   longitude?: number;
+  willingness?: "low" | "medium" | "high";
 }
 
 export interface Room {

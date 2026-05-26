@@ -96,6 +96,7 @@ export const POST = apiHandler(
         latitude: p.latitude!,
         longitude: p.longitude!,
         transportationMode: p.transportationMode,
+        willingness: p.willingness,
       }));
 
     const totalParticipants = (room.participants as IParticipant[]).length;

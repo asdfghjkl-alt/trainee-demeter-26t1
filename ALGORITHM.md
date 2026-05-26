@@ -17,6 +17,9 @@ The algorithm runs in five distinct stages:
 ### Step 1: Reachable Zones Generation (Isochrones)
 For each participant, the algorithm contacts the **Mapbox Isochrone API** to draw an amoeba-like shape (a polygon) around their starting coordinate. This polygon represents the absolute boundary of how far they can travel given their `transportationMode` (driving, walking, cycling) within the `travelBudgetMinutes`.
 
+**Asymmetric Willingness Thresholds:**
+Each participant can express their willingness to travel. "Eager" participants have their isochrone budget multiplied by 1.5x, while "Local" participants have their budget halved (0.5x). This artificially expands or shrinks their reach to model group compromises.
+
 **Special Handling:**
 - **Mapbox Limit:** Mapbox caps the `contours_minutes` API parameter at 60 minutes. If a participant's travel budget exceeds 60 minutes, the algorithm fetches the 60-minute polygon and uses **Turf.js (`@turf/buffer`)** to artificially expand the polygon outwards by the calculated distance they could cover in the remaining time.
 - **Transit Mode (Targomo Integration):** Mapbox does not natively support public transit isochrones. For participants using transit, the algorithm uses the **Targomo API** to generate true "star-shaped" public transit catchments that accurately follow train lines and bus corridors. If the Targomo API fails or the key is missing, it gracefully falls back to a Mapbox `cycling` profile with a 1.2x time multiplier (as cycling speed is a geographical approximation of urban transit speed).
@@ -43,7 +46,7 @@ If the participants are located so far apart that their polygons physically cann
 
 ### Step 3: Dual-Proximity Search Anchors
 The algorithm mathematically calculates two distinct search anchors to cast a wide net for potential venues:
-1. **Geographical Midpoint:** The exact mathematical average of all participant latitudes and longitudes. This anchor finds venues tightly clustered around the actual users (perfect for situations where the budget is massive but participants are close).
+1. **Weighted Geographical Midpoint:** The mathematical average of all participant latitudes and longitudes, weighted by the inverse of their willingness to travel. This strategically pulls the center of gravity closer to "Local" participants to minimize their travel.
 2. **Tight Intersection Centroid:** The geographic centre of the extremely tight intersection polygon discovered by the Binary Search in Step 2. This anchor finds venues perfectly central to the absolute minimum physical travel boundaries (perfect for edge cases where the geographical midpoint lands in the ocean or a remote unpopulated area).
 
 ### Step 4: Venue Search
@@ -55,18 +58,18 @@ Using **both** of the anchors from Step 3, the algorithm queries the **Mapbox Se
 ### Step 5: Travel-Time Matrix & Scoring
 With a diverse list of raw candidate venues from both search anchors, the algorithm takes up to 30 candidates and builds a precise travel-time matrix to score them. By feeding the matrix venues from both anchors, the scoring formula guarantees that flawed locations (e.g. venues in the ocean or artificially pulled to the city centre) are objectively punished by high travel times, allowing the true mathematically optimal venue to win.
 
-1. **Routing Engines:**
-   - **Transit:** The algorithm attempts to use the **Transport for NSW (TfNSW) Trip Planner API** to get real-time train and bus schedules between the participant and the venue. If TfNSW fails, it falls back to Mapbox's `driving-traffic` profile and applies a `1.5x` time multiplier (a standard urban heuristic representing the extra time spent walking to stations and waiting for vehicles).
-   - **Driving/Walking/Cycling:** The algorithm queries the **Mapbox Directions API** for exact travel times.
+1. **Routing Engines (Matrix APIs):**
+   - **Transit:** The algorithm uses the **Targomo Matrix API** to compute highly efficient bulk transit routing. If Targomo fails or has no transit route, it falls back to Mapbox's driving times multiplied by a `1.5x` time penalty (a standard urban heuristic representing the extra time spent walking to stations and waiting for vehicles).
+   - **Driving/Walking/Cycling:** The algorithm queries the **Mapbox Matrix API** to efficiently fetch exact travel times in large bulk batches, minimizing API calls and drastically improving latency.
 
 2. **Meeting Direction:** 
    The algorithm respects the room's `meetingDirection` setting (e.g., traveling *to* the venue vs. traveling *from* the venue). It correctly flips the origin and destination coordinates when querying the APIs to account for one-way streets, traffic flow, and transit schedules.
 
 3. **Composite Penalty Score:**
-   Each candidate venue receives a penalty score (lower is better). The formula balances individual fairness with group efficiency:
+   Each candidate venue receives a penalty score (lower is better). Travel times are artificially inflated for "Local" participants (by 2x) before entering the score, ensuring the algorithm mathematically protects them from bad commutes. The formula balances individual fairness with group efficiency:
    
    ```javascript
-   Score = (0.5 * MaxCommute) + (0.3 * MeanCommute) + (0.2 * StandardDeviation)
+   Score = (0.5 * PenalizedMaxCommute) + (0.3 * PenalizedMeanCommute) + (0.2 * PenalizedStandardDeviation)
    ```
    - **Max Commute (50% weight):** Heavily penalizes venues where one person has a terrible commute.
    - **Mean Commute (30% weight):** Rewards venues that are generally close for the group on average.

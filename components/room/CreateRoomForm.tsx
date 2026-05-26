@@ -22,6 +22,7 @@ type CreateRoomFormData = {
   dietaryNotes: string;
   preferences: string;
   travelBudgetMinutes: number;
+  willingness: string;
 };
 
 export default function CreateRoomForm({
@@ -57,6 +58,7 @@ export default function CreateRoomForm({
       dietaryNotes: "",
       preferences: "",
       travelBudgetMinutes: 30,
+      willingness: "medium",
     },
   });
 
@@ -229,6 +231,7 @@ export default function CreateRoomForm({
         dietaryNotes: data.dietaryNotes,
         preferences: data.preferences,
         travelBudgetMinutes: data.travelBudgetMinutes,
+        willingness: data.willingness,
       };
 
       const res = await api.post("/rooms", payload);
@@ -662,6 +665,41 @@ export default function CreateRoomForm({
                 {errors.transportationMode && (
                   <p className="mt-1 text-sm text-red-500">
                     {errors.transportationMode.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Willingness to Travel */}
+              <div className="col-span-1 sm:col-span-2">
+                <label className="my-2 block font-medium text-gray-900 dark:text-white">
+                  Willingness to Travel
+                </label>
+                <div className="relative">
+                  <select
+                    {...register("willingness")}
+                    className="w-full appearance-none rounded-xl border-2 border-solid border-gray-300 dark:border-gray-700 bg-white dark:bg-[#0a0a0a] p-3 pr-12 text-base text-gray-900 dark:text-gray-100 transition-colors focus:border-cyan-500 dark:focus:border-cyan-500 focus:outline-none"
+                  >
+                    <option value="low">Low (Prefer closer venues)</option>
+                    <option value="medium">Medium (Standard)</option>
+                    <option value="high">High (Willing to travel further)</option>
+                  </select>
+                  <svg
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-gray-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                {errors.willingness && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {errors.willingness.message}
                   </p>
                 )}
               </div>

@@ -23,6 +23,7 @@ export interface IParticipant {
   joinedAt?: Date;
   latitude?: number;
   longitude?: number;
+  willingness?: "low" | "medium" | "high";
 }
 
 export interface IRoom extends Document {
@@ -72,6 +73,11 @@ const participantSchema = new Schema<IParticipant>(
     joinedAt: { type: Date, default: Date.now },
     latitude: { type: Number },
     longitude: { type: Number },
+    willingness: {
+      type: String,
+      enum: ["low", "medium", "high"],
+      default: "medium",
+    },
   },
   { _id: true },
 );

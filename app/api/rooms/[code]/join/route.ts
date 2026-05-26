@@ -116,6 +116,7 @@ export const POST = apiHandler(
       dietaryNotes: value.dietaryNotes,
       preferences: value.preferences,
       transportationMode: value.transportationMode,
+      willingness: value.willingness,
       isGuest,
       isAdmin: !isGuest && room.adminUser.toString() === session!.userData._id,
       latitude,
