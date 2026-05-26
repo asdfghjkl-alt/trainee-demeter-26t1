@@ -13,7 +13,10 @@ import {
   ExternalLink,
   AlertTriangle,
   CalendarPlus,
+  Heart,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import toast from "react-hot-toast";
 import { generateIcsContent, downloadIcsFile } from "@/lib/ics";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -72,6 +75,47 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
     };
     fetchResults();
   }, [room.code, currentParticipantId]);
+
+  const { user } = useAuth();
+  const [favoriteVenues, setFavoriteVenues] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user) {
+      api.get("/users/favorites")
+        .then(res => setFavoriteVenues(res.data.favoriteVenues || []))
+        .catch(console.error);
+    }
+  }, [user]);
+
+  const toggleFavoriteVenue = async (venue: LocationResult) => {
+    if (!user) {
+      toast.error("Sign in to save favourites");
+      return;
+    }
+
+    const alreadyFavorited = favoriteVenues.some(
+      (v) => v.name === venue.name && v.latitude === venue.latitude && v.longitude === venue.longitude
+    );
+
+    try {
+      if (alreadyFavorited) {
+        setFavoriteVenues(prev => prev.filter(v => !(v.name === venue.name && v.latitude === venue.latitude && v.longitude === venue.longitude)));
+        await api.delete("/users/favorites", { data: { venue } });
+        toast.success("Removed from favourites");
+      } else {
+        setFavoriteVenues(prev => [...prev, venue]);
+        await api.post("/users/favorites", { venue });
+        toast.success("Added to favourites");
+      }
+    } catch (error) {
+      toast.error("Failed to update favourites");
+      api.get("/users/favorites").then(res => setFavoriteVenues(res.data.favoriteVenues || [])).catch(console.error);
+    }
+  };
+
+  const isFavorited = useCallback((w: LocationResult) => favoriteVenues.some(
+    (v) => v.name === w.name && v.latitude === w.latitude && v.longitude === w.longitude
+  ), [favoriteVenues]);
 
   // ─── Derived ───────────────────────────────────────────────────────────
   const currentParticipant = room.participants.find(
@@ -610,12 +654,19 @@ export default function ResultsView({ room, currentParticipantId }: Props) {
               winners={winners}
               room={room}
               onViewMap={showLocationDetails}
+              isFavorited={isFavorited}
+              toggleFavoriteVenue={toggleFavoriteVenue}
             />
           ) : (
             <NoVotesCard />
           )}
 
-          <Breakdown results={results} hasAnyVotes={hasAnyVotes} />
+          <Breakdown 
+            results={results} 
+            hasAnyVotes={hasAnyVotes} 
+            isFavorited={isFavorited}
+            toggleFavoriteVenue={toggleFavoriteVenue}
+          />
 
           <Link
             href="/"
@@ -749,10 +800,14 @@ function Podium({
   winners,
   room,
   onViewMap,
+  isFavorited,
+  toggleFavoriteVenue,
 }: {
   winners: LocationResult[];
   room: Room;
   onViewMap: (loc: LocationResult) => void;
+  isFavorited: (loc: LocationResult) => boolean;
+  toggleFavoriteVenue: (loc: LocationResult) => void;
 }) {
   const handleCalendar = (w: LocationResult) => {
     const icsContent = generateIcsContent({
@@ -809,6 +864,13 @@ function Podium({
           >
             <CalendarPlus className="w-4 h-4" />
             Calendar
+          </button>
+          <button
+            onClick={() => toggleFavoriteVenue(w)}
+            className="btn inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-white dark:bg-[#111] hover:bg-gray-50 dark:hover:bg-gray-900 text-pink-600 dark:text-pink-400 border-gray-200 dark:border-gray-800 hover:opacity-100"
+          >
+            <Heart className={`w-4 h-4 ${isFavorited(w) ? 'fill-current' : ''}`} />
+            Favorite
           </button>
         </div>
       </div>
@@ -867,6 +929,13 @@ function Podium({
                 <CalendarPlus className="w-3.5 h-3.5" />
                 Calendar
               </button>
+              <button
+                onClick={() => toggleFavoriteVenue(w)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+              >
+                <Heart className={`w-3.5 h-3.5 ${isFavorited(w) ? 'fill-current' : ''}`} />
+                Favorite
+              </button>
             </div>
           </div>
         ))}
@@ -891,9 +960,13 @@ function NoVotesCard() {
 function Breakdown({
   results,
   hasAnyVotes,
+  isFavorited,
+  toggleFavoriteVenue,
 }: {
   results: LocationResult[];
   hasAnyVotes: boolean;
+  isFavorited: (loc: LocationResult) => boolean;
+  toggleFavoriteVenue: (loc: LocationResult) => void;
 }) {
   const maxVotes = Math.max(...results.map((r) => r.votes), 0);
 
@@ -909,53 +982,64 @@ function Breakdown({
           return (
             <div
               key={r._id}
-              className={`flex items-center gap-3 p-3 rounded-xl border ${
+              className={`flex flex-col gap-2 p-3 rounded-xl border ${
                 isWinner
                   ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900"
                   : "bg-white dark:bg-gray-900/40 border-gray-200 dark:border-gray-800"
               }`}
             >
-              <div
-                className={`w-7 h-7 flex items-center justify-center rounded-full font-bold text-xs shrink-0 ${
-                  isWinner
-                    ? "bg-amber-500 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                }`}
-              >
-                {r.rank}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {r.name}
-                </p>
-                {hasAnyVotes ? (
-                  <div className="h-1.5 mt-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${
-                        isWinner ? "bg-amber-500" : "bg-cyan-500"
-                      }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    No first-preference votes
-                  </p>
-                )}
-              </div>
-              <div className="text-right shrink-0">
-                <p
-                  className={`text-sm font-bold ${
+              <div className="flex items-center gap-3 w-full">
+                <div
+                  className={`w-7 h-7 flex items-center justify-center rounded-full font-bold text-xs shrink-0 ${
                     isWinner
-                      ? "text-amber-700 dark:text-amber-400"
-                      : "text-gray-700 dark:text-gray-300"
+                      ? "bg-amber-500 text-white"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                   }`}
                 >
-                  {r.votes}
-                </p>
-                <p className="text-[10px] uppercase text-gray-400">
-                  {r.votes === 1 ? "vote" : "votes"}
-                </p>
+                  {r.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    {r.name}
+                  </p>
+                  {hasAnyVotes ? (
+                    <div className="h-1.5 mt-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          isWinner ? "bg-amber-500" : "bg-cyan-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      No first-preference votes
+                    </p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p
+                    className={`text-sm font-bold ${
+                      isWinner
+                        ? "text-amber-700 dark:text-amber-400"
+                        : "text-gray-700 dark:text-gray-300"
+                    }`}
+                  >
+                    {r.votes}
+                  </p>
+                  <p className="text-[10px] uppercase text-gray-400">
+                    {r.votes === 1 ? "vote" : "votes"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-800 pt-2 mt-1 w-full justify-end">
+                <button
+                  onClick={() => toggleFavoriteVenue(r)}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300"
+                >
+                  <Heart className={`w-3.5 h-3.5 ${isFavorited(r) ? 'fill-current' : ''}`} />
+                  Favorite
+                </button>
               </div>
             </div>
           );

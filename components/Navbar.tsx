@@ -150,14 +150,7 @@ export default function Navbar() {
                               <User className="mr-3 h-4 w-4" />
                               Profile
                             </Link>
-                            <Link
-                              href="/settings"
-                              onClick={() => setIsDropdownOpen(false)}
-                              className="group flex items-center px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-cyan-600 dark:hover:text-cyan-400"
-                            >
-                              <Settings className="mr-3 h-4 w-4" />
-                              Settings
-                            </Link>
+
                             <Link
                               href="/rooms"
                               onClick={() => setIsDropdownOpen(false)}

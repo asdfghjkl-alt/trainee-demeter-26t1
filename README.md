@@ -120,7 +120,7 @@ To secure the position as the premium, more advanced alternative to tools like "
 - [x] **Asymmetric "Willingness" Thresholds**: Allow users to indicate how much they *care* about traveling. Shift the mathematical center of gravity toward the lazier/busier person to model real friend group compromises.
 - [ ] **Dynamic Vibe & Weather Integration**: Ping a weather API based on the meeting time. If it's going to rain, penalize outdoor venues or those requiring long walks from transit, prioritizing indoor spots with door-to-door access.
 - [ ] **The "Late Friend" Adjuster**: Utilize live GPS tracking to dynamically adjust the venue slightly closer to those who were on time, or simply update ETAs live via WebSockets if someone hasn't left their house yet.
-- [x] **Seamless Logistics & Calendar Handoff**: Once finalized, instantly generate `.ics` calendar invites, "Call Uber/Lyft" deep links with pre-filled destinations, and native Maps routing to eliminate post-voting friction.
+- [x] **Seamless Logistics & Calendar Handoff**: Once finalized, instantly generate `.ics` calendar invites and native Maps routing to eliminate post-voting friction.
 
 ### Algorithm Limitations
 
@@ -144,7 +144,7 @@ While the algorithm uses a highly robust Dual-Proximity search to avoid geograph
 
 ### Application Enhancements
 
-- [ ] **User Accounts & History**: Implement user authentication to save favorite locations, past meeting spots, and frequent contacts.
+- [x] **User Accounts & History**: Implemented user authentication to save favorite locations, past meeting spots, and manage basic profile details.
 - [ ] **Real-Time WebSockets**: Transition from polling to WebSockets for instant, real-time updates during the live voting phase and lobby interactions.
 - [ ] **Calendar Integration**: Allow syncing with Google Calendar or Outlook to automatically suggest meeting times alongside meeting places.
 - [ ] **Accessibility (a11y) Improvements**: Enhance the drag-and-drop voting interface and color-coded map legends for screen readers and keyboard-only navigation.
